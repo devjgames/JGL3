@@ -159,6 +159,7 @@ public class Editor {
             particles = (ParticleSystem)particles.newInstance();
             node.setRenderable(particles);
             node.setTexture(game.getAssets().load(IO.file("assets/maps/particle.png")));
+            node.setVertexColorEnabled(true);
             node.setZOrder(100);
             node.setDepthState(DepthState.READONLY);
             node.setBlendState(BlendState.ADDITIVE);

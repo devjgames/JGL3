@@ -9,8 +9,8 @@ public class FireLight implements ParticleEmitter {
     
     @Override
     public void emitParticle(Particle particle, Random random) {
-        float c = 0.1f + random.nextFloat() * 0.1f;
-        float s = 30 + random.nextFloat() * 50;
+        float c = 0.3f + random.nextFloat() * 0.3f;
+        float s = 40 + random.nextFloat() * 60;
         float e = 4 + random.nextFloat() * 8;
 
         particle.startColorR = particle.startColorG = particle.startColorB = c;

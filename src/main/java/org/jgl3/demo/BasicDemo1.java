@@ -28,12 +28,12 @@ public class BasicDemo1 extends Demo {
         renderer.setModel();
         renderer.setVertexColorEnabled(true);
         renderer.beginTriangles();
-        renderer.push(-50, 0, -50, 0, 0, 0, 0, 0, 0, 0, 1, 0.5f, 0, 1);
-        renderer.push(-50, 0, +50, 0, 0, 0, 0, 0, 0, 0, 1, 0.5f, 0, 1);
-        renderer.push(+50, 0, +50, 0, 0, 0, 0, 0, 0, 0, 1, 0.5f, 0, 1);
-        renderer.push(+50, 0, +50, 0, 0, 0, 0, 0, 0, 0, 1, 0.5f, 0, 1);
-        renderer.push(+50, 0, -50, 0, 0, 0, 0, 0, 0, 0, 1, 0.5f, 0, 1);
-        renderer.push(-50, 0, -50, 0, 0, 0, 0, 0, 0, 0, 1, 0.5f, 0, 1);
+        renderer.push(-50, 0, -50, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1);
+        renderer.push(-50, 0, +50, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1);
+        renderer.push(+50, 0, +50, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1);
+        renderer.push(+50, 0, +50, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1);
+        renderer.push(+50, 0, -50, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1);
+        renderer.push(-50, 0, -50, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1);
         renderer.endTriangles();
         renderer.initSprites();
         renderer.setFont(font);
