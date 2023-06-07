@@ -261,6 +261,25 @@ public final class UIManager extends Resource {
         return textField.getChanged();
     }
 
+    public Float slider(String key, int gap, String title, float value, boolean reset, int cols) {
+        UISlider slider = (UISlider)keyedControls.get(key);
+
+        if(slider == null) {
+            keyedControls.put(key, slider = new UISlider(this, title, cols));
+        }
+        lx += gap * game.getScale();
+        slider.setLocation(lx, ly);
+        lx += slider.getWidth();
+        if(reset) {
+            slider.setValue(value);
+        }
+        maxH = Math.max(slider.getHeight(), maxH);
+
+        controls.add(slider);
+
+        return slider.getChanged();
+    }
+
     public Integer list(String key, int gap, Vector<String> items, int cols, int rows, int selected) {
         UIList list = (UIList)keyedControls.get(key);
 

@@ -2,11 +2,11 @@ package org.jgl3.scene;
 
 import java.io.Serializable;
 
+import org.jgl3.GFX;
 import org.jgl3.Game;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 public final class Camera implements Serializable {
 
@@ -18,7 +18,6 @@ public final class Camera implements Serializable {
     private final Vector3f r = new Vector3f();
     private final Vector3f f = new Vector3f();
     private final Vector3f offset = new Vector3f();
-    private final Vector4f v = new Vector4f();
     private float fieldOfView = 60;
     private float zNear = 0.1f;
     private float zFar = 10000;
@@ -135,21 +134,11 @@ public final class Camera implements Serializable {
         return this;
     }
 
-    public Camera unProject(float z, Game game, Vector3f point) {
+    public Vector3f unProject(float z, Game game, Vector3f point) {
         return unProject(game.getMouseX(), game.getHeight() - game.getMouseY() - 1, z, 0, 0, game.getWidth(), game.getHeight(), point);
     }
 
-    public Camera unProject(float wx, float wy, float wz, int vx, int vy, int vw, int vh, Vector3f point) {
-        matrix.identity().mul(projection).mul(view).invert();
-
-        v.x = (wx - vx) / (float) vw * 2 - 1;
-        v.y = (wy - vy) / (float) vh * 2 - 1;
-        v.z = 2 * wz - 1;
-        v.w = 1;
-        v.mul(matrix);
-        v.div(v.w);
-        point.set(v.x, v.y, v.z);
-        
-        return this;
+    public Vector3f unProject(float wx, float wy, float wz, int vx, int vy, int vw, int vh, Vector3f point) {
+        return GFX.unProject(wx, wy, wz, vx, vy, vw, vh, projection, view, point);
     }
 }

@@ -4,6 +4,7 @@ import java.util.Vector;
 
 import org.jgl3.GFX;
 import org.jgl3.Game;
+import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.scene.KeyFrameMeshLoader;
 import org.jgl3.scene.ParticleSystem;
@@ -72,12 +73,8 @@ public class App {
 
     public static void main(String[] args) throws Exception {
         new App(1000, 600, true,
-            new BasicDemo1(),
-            new BasicDemo2(),
-            new BasicDemo3(),
-            new BasicDemo4(),
-            new MapDemo1(),
-            new MapDemo2()
+            new Editor(),
+            new Player(IO.file("assets/scenes/scene1.scn"))
         );
     }
 }

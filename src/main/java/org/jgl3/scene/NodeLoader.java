@@ -35,6 +35,7 @@ public final class NodeLoader {
                     Node node = new Node();
 
                     node.setTexture(assets.load(IO.file(material)));
+                    node.getTexture().toLinear(false);
                     node.setName(IO.fileNameWithOutExtension(IO.file(material)));
                     root.addChild(node);
                     keyedNodes.put(material, node);

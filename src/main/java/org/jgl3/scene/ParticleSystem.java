@@ -50,6 +50,7 @@ public final class ParticleSystem implements Renderable {
     private final Matrix4f matrix = new Matrix4f();
     private final BoundingBox bounds = new BoundingBox();
     private final int seed;
+    private final Triangle[] triangles;
 
     public ParticleSystem(File file, float particlesPerSecond, int maxParticles, int seed, ParticleEmitter emitter) throws Exception {
         this.file = file;
@@ -61,8 +62,10 @@ public final class ParticleSystem implements Renderable {
         random = new Random(seed);
         this.emitter = emitter;
         deadCount = maxParticles;
+        triangles = new Triangle[maxParticles];
         for (int i = 0; i != deadCount; i++) {
             dead[i] = new Particle();
+            triangles[i] = new Triangle();
         }
     }
 
@@ -81,12 +84,12 @@ public final class ParticleSystem implements Renderable {
 
     @Override
     public int getTriangleCount() {
-        return 0;
+        return liveCount * 2;
     }
 
     @Override
     public Triangle getTriangle(int i, Triangle triangle) {
-        return triangle;
+        return triangle.set(triangles[i]);
     }
 
     @Override
@@ -95,7 +98,9 @@ public final class ParticleSystem implements Renderable {
     }
 
     @Override
-    public void update(Game game, Scene scene, Node node) throws Exception {
+    public void update(Scene scene, Node node) throws Exception {
+        Game game = Game.getInstance();
+
         seconds += particlesPerSecond * game.getElapsedTime();
         time = game.getTotalTime();
         while (seconds >= 1 && deadCount != 0) {
@@ -214,11 +219,13 @@ public final class ParticleSystem implements Renderable {
     }
 
     @Override
-    public void render(Game game, Scene scene, Node node) throws Exception {
+    public void render(Scene scene, Node node) throws Exception {
 
         if(liveCount == 0) {
             return;
         }
+
+        Game game = Game.getInstance();
 
         matrix.set(scene.getCamera().getView()).mul(node.getModel());
 
@@ -233,7 +240,7 @@ public final class ParticleSystem implements Renderable {
 
         renderer.beginTriangles();
 
-        for (int i = 0; i != liveCount; i++) {
+        for (int i = 0, j = 0; i != liveCount; i++, j += 2) {
             Particle particle = live[i];
             float px = particle.positionX;
             float py = particle.positionY;
@@ -244,11 +251,31 @@ public final class ParticleSystem implements Renderable {
             float cg = particle.colorG;
             float cb = particle.colorB;
             float ca = particle.colorA;
+            float x1 = px - rx * sx - ux * sy;
+            float y1 = py - ry * sx - uy * sy;
+            float z1 = pz - rz * sx - uz * sy;
+            float x2 = px + rx * sx - ux * sy;
+            float y2 = py + ry * sx - uy * sy;
+            float z2 = pz + rz * sx - uz * sy;
+            float x3 = px + rx * sx + ux * sy;
+            float y3 = py + ry * sx + uy * sy;
+            float z3 = pz + rz * sx + uz * sy;
+            float x4 = px - rx * sx + ux * sy;
+            float y4 = py - ry * sx + uy * sy;
+            float z4 = pz - rz * sx + uz * sy;
+
+            triangles[j + 0].getP1().set(x1, y1, z1);
+            triangles[j + 0].getP2().set(x2, y2, z2);
+            triangles[j + 0].getP3().set(x3, y3, z3);
+            triangles[j + 0].calcPlane();
+
+            triangles[j + 1].getP1().set(x3, y3, z3);
+            triangles[j + 1].getP2().set(x4, y4, z4);
+            triangles[j + 1].getP3().set(x1, y1, z1);
+            triangles[j + 1].calcPlane();
 
             renderer.push(
-                px - rx * sx - ux * sy,
-                py - ry * sx - uy * sy,
-                pz - rz * sx - uz * sy, 
+                x1, y1, z1,
                 0, 0, 
                 0, 0, 
                 0, 0, 0, 
@@ -256,9 +283,7 @@ public final class ParticleSystem implements Renderable {
                 );
 
             renderer.push(
-                px + rx * sx - ux * sy,
-                py + ry * sx - uy * sy,
-                pz + rz * sx - uz * sy,
+                x2, y2, z2,
                 1, 0,
                 0, 0,
                 0, 0, 0,
@@ -266,9 +291,7 @@ public final class ParticleSystem implements Renderable {
             );
 
             renderer.push(
-                px + rx * sx + ux * sy,
-                py + ry * sx + uy * sy,
-                pz + rz * sx + uz * sy,
+                x3, y3, z3,
                 1, 1,
                 0, 0,
                 0, 0, 0,
@@ -276,9 +299,7 @@ public final class ParticleSystem implements Renderable {
             );
 
             renderer.push(
-                px + rx * sx + ux * sy,
-                py + ry * sx + uy * sy,
-                pz + rz * sx + uz * sy,
+                x3, y3, z3,
                 1, 1,
                 0, 0,
                 0, 0, 0,
@@ -286,9 +307,7 @@ public final class ParticleSystem implements Renderable {
             );
 
             renderer.push(
-                px - rx * sx + ux * sy,
-                py - ry * sx + uy * sy,
-                pz - rz * sx + uz * sy,
+                x4, y4, z4,
                 0, 1,
                 0, 0,
                 0, 0, 0,
@@ -296,9 +315,7 @@ public final class ParticleSystem implements Renderable {
             );
 
             renderer.push(
-                px - rx * sx - ux * sy,
-                py - ry * sx - uy * sy,
-                pz - rz * sx - uz * sy, 
+                x1, y1, z1,
                 0, 0, 
                 0, 0, 
                 0, 0, 0, 

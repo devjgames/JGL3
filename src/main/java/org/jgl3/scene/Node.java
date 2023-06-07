@@ -71,6 +71,10 @@ public final class Node implements Serializable {
     private int minTrisPerTree = 16;
     private final BoundingBox meshBounds = new BoundingBox();
     private transient float[] baseVertices = null;
+    private boolean textureLinear = false;
+    private boolean textureClampToEdge = false;
+    private boolean texture2Linear = true;
+    private boolean texture2ClampToEdge = true;
 
     public String getName() {
         return name;
@@ -243,8 +247,44 @@ public final class Node implements Serializable {
         return this;
     }
 
+    public boolean isTextureLinear() {
+        return textureLinear;
+    }
+
+    public Node setTextureLinear(boolean linear) {
+        textureLinear = linear;
+        return this;
+    }
+
+    public boolean clampTextureToEdge() {
+        return textureClampToEdge;
+    }
+
+    public Node setClampTextureToEdge(boolean clamp) {
+        textureClampToEdge = clamp;
+        return this;
+    }
+
     public Texture getTexture2() {
         return texture2;
+    }
+
+    public boolean isTexture2Linear() {
+        return texture2Linear;
+    }
+
+    public Node setTexture2Linear(boolean linear) {
+        texture2Linear = linear;
+        return this;
+    }
+
+    public boolean clampTexture2ToEdge() {
+        return texture2ClampToEdge;
+    }
+
+    public Node setClampTexture2ToEdge(boolean clamp) {
+        texture2ClampToEdge = clamp;
+        return this;
     }
 
     public Node setTexture2(Texture texture2) {
@@ -808,6 +848,11 @@ public final class Node implements Serializable {
         if(!t1.equals("@")) {
             try {
                 texture = Game.getInstance().getAssets().load(IO.file(t1));
+                if(isTextureLinear()) {
+                    texture.toLinear(clampTextureToEdge());
+                } else {
+                    texture.toNearest(clampTextureToEdge());
+                }
             } catch(Exception ex) {
                 ex.printStackTrace();
             }
@@ -815,7 +860,11 @@ public final class Node implements Serializable {
         if(!t2.equals("@")) {
             try {
                 texture2 = Game.getInstance().getAssets().load(IO.file(t2));
-                texture2.toLinear(true);
+                if(isTexture2Linear()) {
+                    texture.toLinear(clampTexture2ToEdge());
+                } else {
+                    texture.toNearest(clampTexture2ToEdge());
+                }
             } catch(Exception ex) {
                 ex.printStackTrace();
             }

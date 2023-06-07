@@ -1,5 +1,8 @@
 package org.jgl3;
 
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 
 public final class GFX {
@@ -62,5 +65,22 @@ public final class GFX {
                 Log.put(0, tag + ":" + (code == GL11.GL_INVALID_ENUM));
             }
         }
+    }
+
+    private static final Matrix4f matrix = new Matrix4f();
+    private static final Vector4f v = new Vector4f();
+
+    public static Vector3f unProject(float wx, float wy, float wz, int vx, int vy, int vw, int vh, Matrix4f projection, Matrix4f view, Vector3f point) {
+        matrix.identity().mul(projection).mul(view).invert();
+
+        v.x = (wx - vx) / (float) vw * 2 - 1;
+        v.y = (wy - vy) / (float) vh * 2 - 1;
+        v.z = 2 * wz - 1;
+        v.w = 1;
+        v.mul(matrix);
+        v.div(v.w);
+        point.set(v.x, v.y, v.z);
+        
+        return point;
     }
 }

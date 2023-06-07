@@ -16,7 +16,6 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Log;
 import org.jgl3.Renderer;
-import org.jgl3.Texture;
 import org.joml.Vector4f;
 
 public final class Scene implements Serializable {
@@ -27,9 +26,7 @@ public final class Scene implements Serializable {
     private static final Vector<Node> lights = new Vector<>();
     
     private final Node root = new Node();
-    private final Vector4f backgroundColor = new Vector4f(0.2f, 0.2f, 0.2f, 1);
-    private int lightMapWidth = 128;
-    private int lightMapHeight = 128;
+    private final Vector4f backgroundColor = new Vector4f(0.25f, 0.25f, 0.25f, 1);
     private int snap = 1;
     private final Camera camera = new Camera();
     private int trianglesRendered = 0;
@@ -37,11 +34,9 @@ public final class Scene implements Serializable {
     private boolean drawLights = true;
     private boolean drawAxis = true;
     private transient Node ui = null;
-    private float minAO = 0.2f;
-    private float aoRadius = 32;
-    private float aoStrength = 1;
-    private int aoSamples = 64;
-    private boolean linear = true;
+    private DepthState lastDepthState = null;
+    private CullState lastCullState = null;
+    private BlendState lastBlendState = null;
 
     public int getTrianglesRendered() {
         return trianglesRendered;
@@ -68,24 +63,6 @@ public final class Scene implements Serializable {
         return backgroundColor;
     }
 
-    public int getLightMapWidth() {
-        return lightMapWidth;
-    }
-
-    public Scene setLightMapWidth(int width) {
-        lightMapWidth = width;
-        return this;
-    }
-
-    public int getLightMapHeight() {
-        return lightMapHeight;
-    }
-
-    public Scene setLightMapHeight(int height) {
-        lightMapHeight = height;
-        return this;
-    }
-
     public int getSnap() {
         return  snap;
     }
@@ -99,63 +76,6 @@ public final class Scene implements Serializable {
         return camera;
     }
 
-    public float getMinAO() {
-        return minAO;
-    }
-
-    public Scene setMinAO(float min) {
-        minAO = min;
-        return this;
-    }
-
-    public float getAORadius() {
-        return aoRadius;
-    }
-
-    public Scene setAORadius(float radius) {
-        aoRadius = radius;
-        return this;
-    }
-
-    public float getAOStrength() {
-        return aoStrength;
-    }
-
-    public Scene setAOStrength(float strength) {
-        aoStrength = strength;
-        return this;
-    }
-
-    public int getAOSampleCount() {
-        return aoSamples;
-    }
-
-    public Scene setAOSampleCount(int count) {
-        aoSamples = count;
-        return this;
-    }
-
-    public boolean isLinear() {
-        return linear;
-    }
-
-    public Scene setLinear(boolean linear) throws Exception {
-        this.linear = linear;
-        root.traverse((n) -> {
-            Texture texture2 = n.getTexture2();
-
-            if(texture2 != null) {
-                if(linear) {
-                    texture2.toLinear(true);
-                } else {
-                    texture2.toNearest(true);
-                }
-            }
-            return true;
-        });
-        return this;
-    }
-
     public boolean getDrawAxis() {
         return drawAxis;
     }
@@ -167,31 +87,7 @@ public final class Scene implements Serializable {
 
     public Scene loadUI() throws Exception {
         Log.put(1, "Loading ui node ...");
-        ui = NodeLoader.load(IO.file("assets/ui/cube.obj"));
-        for(int i = 0; i != ui.getFaceCount(); i++) {
-            for(int j = 0; j != ui.getFaceVertexCount(i); j++) {
-                float nx = Math.abs(ui.getVertexComponent(ui.getFaceVertex(i, j), 7));
-                float ny = Math.abs(ui.getVertexComponent(ui.getFaceVertex(i, j), 8));
-                int k = 10;
-
-                if(nx > 0.5) {
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 1);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 0);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 0);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 1);
-                } else if(ny > 0.5) {
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 0);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 1);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 0);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 1);
-                } else {
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 0);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 0);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 1);
-                    ui.setVertexComponent(ui.getFaceVertex(i, j), k++, 1);
-                }
-            }
-        }
+        ui = NodeLoader.load(IO.file("assets/ui/ui.obj"));
         return this;
     }
 
@@ -205,7 +101,6 @@ public final class Scene implements Serializable {
         Renderer renderer = game.getRenderer();
 
         camera.calcTransforms(aspectRatio);
-        root.calcBoundsAndTransform(camera);
 
         trianglesRendered = 0;
         collidableTriangles = 0;
@@ -215,7 +110,7 @@ public final class Scene implements Serializable {
                 Renderable renderable = n.getRenderable();
                 if(renderable != null || n.hasMesh()) {
                     if(renderable != null) {
-                        renderable.update(game, this, n);
+                        renderable.update(this, n);
                     }
                     renderables.add(n);
                 }
@@ -226,6 +121,8 @@ public final class Scene implements Serializable {
             }
             return false;
         });
+
+        root.calcBoundsAndTransform(camera);
 
         renderables.sort((a, b) -> {
             if (a == b) {
@@ -269,12 +166,36 @@ public final class Scene implements Serializable {
         };
 
         renderer.setLightCount(Math.min(Renderer.MAX_LIGHTS, lights.size()));
-        renderer.setVertexColorEnabled(true);
+
+        lastDepthState = null;
+        lastBlendState = null;
+        lastCullState = null;
+
+        int i = 0;
+
+        for(; i != renderables.size(); i++) {
+            Node renderable = renderables.get(i);
+
+            if(renderable.getZOrder() >= 0) {
+                break;
+            }
+            render(game, renderer, renderable);
+        }
+
+        renderer.setVertexColorEnabled(false);
+        renderer.setLightingEnabled(false);
+        renderer.setTexture2(null);
+        renderer.setLayerColor(0, 0, 0, 0);
+
+        GFX.setDepthState(lastDepthState = DepthState.READWRITE);
+        GFX.setBlendState(lastBlendState = BlendState.OPAQUE);
+        GFX.setCullState(lastCullState = CullState.BACK);
+
         if(ui != null) {
+            renderer.setTexture(ui.getTexture());
             if(drawLights) {
                 for(Node light : lights) {
                     ui.getPosition().set(light.getAbsolutePosition());
-                    ui.getScale().set(1, 1, 1).mul(0.5f);
                     ui.calcBoundsAndTransform(camera);
                     renderer.setModel(ui.getModel());
                     ui.renderMesh();
@@ -282,60 +203,59 @@ public final class Scene implements Serializable {
             }
             if(drawAxis) {
                 ui.getPosition().set(camera.getTarget());
-                ui.getScale().set(1, 1, 1).mul(0.5f);
                 ui.calcBoundsAndTransform(camera);
                 renderer.setModel(ui.getModel());
                 ui.renderMesh();
             }
         }
 
-        DepthState lastDepthState = null;
-        CullState lastCullState = null;
-        BlendState lastBlendState = null;
-
-        for (Node renderable : renderables) {
-            renderer.setModel(renderable.getModel());
-            renderer.setLightingEnabled(renderable.isLightingEnabled());
-            renderer.setVertexColorEnabled(renderable.isVertexColorEnabled());
-            renderer.setTexture(renderable.getTexture());
-            renderer.setTexture2(renderable.getTexture2());
-            renderer.setAmbientColor(renderable.getAmbientColor());
-            renderer.setDiffuseColor(renderable.getDiffuseColor());
-            renderer.setColor(renderable.getColor());
-            renderer.setLayerColor(renderable.getLayerColor());
-
-            if(lastDepthState != renderable.getDepthState()) {
-                GFX.setDepthState(lastDepthState = renderable.getDepthState());
-            }
-            if(lastCullState != renderable.getCullState()) {
-                GFX.setCullState(lastCullState = renderable.getCullState());
-            }
-            if(lastBlendState != renderable.getBlendState()) {
-                GFX.setBlendState(lastBlendState = renderable.getBlendState());
-            }
-
-            if(!renderable.isLightingEnabled() && renderable.hasMesh()) {
-                for(int i = 0; i != renderable.getVertexCount(); i++) {
-                    for(int j = 10; j != 14; j++) {
-                        renderable.setVertexComponent(i, j, 1);
-                    }
-                }
-            }
-
-            int n = renderable.getTriangleCount();
-            if(renderable.isCollidable()) {
-                collidableTriangles += n;
-            }
-            if(renderable.hasMesh()) {
-                renderable.renderMesh();
-            } else {
-                renderable.getRenderable().render(game, this, renderable);
-            }
-            trianglesRendered += n;
-
+        for(; i != renderables.size(); i++) {
+            render(game, renderer, renderables.get(i));
         }
+
         renderables.clear();
         lights.clear();
+    }
+
+    private void render(Game game, Renderer renderer, Node renderable) throws Exception {
+        renderer.setModel(renderable.getModel());
+        renderer.setLightingEnabled(renderable.isLightingEnabled());
+        renderer.setVertexColorEnabled(renderable.isVertexColorEnabled());
+        renderer.setTexture(renderable.getTexture());
+        renderer.setTexture2(renderable.getTexture2());
+        renderer.setAmbientColor(renderable.getAmbientColor());
+        renderer.setDiffuseColor(renderable.getDiffuseColor());
+        renderer.setColor(renderable.getColor());
+        renderer.setLayerColor(renderable.getLayerColor());
+
+        if(lastDepthState != renderable.getDepthState()) {
+            GFX.setDepthState(lastDepthState = renderable.getDepthState());
+        }
+        if(lastCullState != renderable.getCullState()) {
+            GFX.setCullState(lastCullState = renderable.getCullState());
+        }
+        if(lastBlendState != renderable.getBlendState()) {
+            GFX.setBlendState(lastBlendState = renderable.getBlendState());
+        }
+
+        if(!renderable.isLightingEnabled() && renderable.hasMesh()) {
+            for(int i = 0; i != renderable.getVertexCount(); i++) {
+                for(int j = 10; j != 14; j++) {
+                    renderable.setVertexComponent(i, j, 1);
+                }
+            }
+        }
+
+        int n = renderable.getTriangleCount();
+        if(renderable.isCollidable()) {
+            collidableTriangles += n;
+        }
+        if(renderable.hasMesh()) {
+            renderable.renderMesh();
+        } else {
+            renderable.getRenderable().render(this, renderable);
+        }
+        trianglesRendered += n;
     }
 
     @Override

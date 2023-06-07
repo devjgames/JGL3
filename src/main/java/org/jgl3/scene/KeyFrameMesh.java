@@ -24,6 +24,7 @@ public final class KeyFrameMesh implements Renderable {
     public KeyFrameMesh(File file, Vector<KeyFrame> frames) throws Exception {
         this.file = file;
         this.frames.addAll(frames);
+        reset();
     }
 
     @Override
@@ -135,10 +136,12 @@ public final class KeyFrameMesh implements Renderable {
     }
 
     @Override
-    public void update(Game game, Scene scene, Node node) throws Exception {
+    public void update(Scene scene, Node node) throws Exception {
         if(isDone()) {
             return;
         }
+
+        Game game = Game.getInstance();
 
         amount += speed * game.getElapsedTime();
         if(amount >= 1) {
@@ -172,9 +175,10 @@ public final class KeyFrameMesh implements Renderable {
     }
 
     @Override
-    public void render(Game game, Scene scene, Node node) throws Exception {
+    public void render(Scene scene, Node node) throws Exception {
         KeyFrame f1 = frames.get(frame);
         KeyFrame f2;
+        Game game = Game.getInstance();
         Renderer renderer = game.getRenderer();
 
         if(frame == end) {
