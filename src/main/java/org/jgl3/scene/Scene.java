@@ -92,8 +92,7 @@ public final class Scene implements Serializable {
 
     public Scene loadUI() throws Exception {
         Log.put(1, "Loading ui node ...");
-        ui = NodeLoader.load(IO.file("assets/ui/ui.obj"));
-        ui = ui.getLastChild().getLastChild();
+        ui = NodeLoader.load(IO.file("assets/ui/ui.obj"), false);
         return this;
     }
 
@@ -252,7 +251,7 @@ public final class Scene implements Serializable {
         renderer.setColor(renderable.getColor());
         renderer.setLayerColor(renderable.getLayerColor());
         renderer.setWarp(renderable.isWarpEnabled());
-        renderer.setWarpAmplitude(renderable.getWarpAmplitudeX(), renderable.getWarpAmplitudeY(), renderable.getWarpAmplitudeZ());
+        renderer.setWarpAmplitude(renderable.getWarpAmplitude());
         renderer.setWarpTime(game.getTotalTime() * renderable.getWarpSpeed());
 
         if(lastDepthState != renderable.getDepthState()) {

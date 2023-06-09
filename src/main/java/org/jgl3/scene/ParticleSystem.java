@@ -235,6 +235,24 @@ public final class ParticleSystem implements Renderable {
         float ux = matrix.m01();
         float uy = matrix.m11();
         float uz = matrix.m21();
+        float fx = matrix.m02();
+        float fy = matrix.m12();
+        float fz = matrix.m22();
+        float lr = Vector3f.length(rx, ry, rz);
+        float lu = Vector3f.length(ux, uy, uz);
+        float lf = Vector3f.length(fx, fy, fz);
+
+        rx /= lr;
+        ry /= lr;
+        rz /= lr;
+
+        ux /= lu;
+        uy /= lu;
+        uz /= lu;
+
+        fx /= lf;
+        fy /= lf;
+        fz /= lf;
 
         Renderer renderer = game.getRenderer();
 
@@ -278,7 +296,7 @@ public final class ParticleSystem implements Renderable {
                 x1, y1, z1,
                 0, 0, 
                 0, 0, 
-                0, 0, 0, 
+                fx, fy, fz, 
                 cr, cg, cb, ca
                 );
 
@@ -286,7 +304,7 @@ public final class ParticleSystem implements Renderable {
                 x2, y2, z2,
                 1, 0,
                 0, 0,
-                0, 0, 0,
+                fx, fy, fz, 
                 cr, cg, cb, ca
             );
 
@@ -294,7 +312,7 @@ public final class ParticleSystem implements Renderable {
                 x3, y3, z3,
                 1, 1,
                 0, 0,
-                0, 0, 0,
+                fx, fy, fz, 
                 cr, cg, cb, ca
             );
 
@@ -302,7 +320,7 @@ public final class ParticleSystem implements Renderable {
                 x3, y3, z3,
                 1, 1,
                 0, 0,
-                0, 0, 0,
+                fx, fy, fz, 
                 cr, cg, cb, ca
             );
 
@@ -310,7 +328,7 @@ public final class ParticleSystem implements Renderable {
                 x4, y4, z4,
                 0, 1,
                 0, 0,
-                0, 0, 0,
+                fx, fy, fz, 
                 cr, cg, cb, ca
             );
 
@@ -318,7 +336,7 @@ public final class ParticleSystem implements Renderable {
                 x1, y1, z1,
                 0, 0, 
                 0, 0, 
-                0, 0, 0, 
+                fx, fy, fz, 
                 cr, cg, cb, ca
                 );
         }

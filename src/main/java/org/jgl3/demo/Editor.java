@@ -1,6 +1,10 @@
 package org.jgl3.demo;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Vector;
 
 import org.jgl3.BlendState;
@@ -73,6 +77,7 @@ public class Editor extends Demo {
     private final BoundingBox bounds = new BoundingBox();
     private final Triangle triangle = new Triangle();
     private Vector<String> extensions = new Vector<>();
+    private Node clipboard = null;
 
     @Override
     public void init() throws Exception {
@@ -87,6 +92,7 @@ public class Editor extends Demo {
         resetSceneEditor = false;
         sceneFile = null;
         selection = null;
+        clipboard = null;
         down = false;
 
         extensions = NodeLoader.extensions();
@@ -108,7 +114,7 @@ public class Editor extends Demo {
         renderableFiles.clear();
         renderableNames.clear();
         popuplateRenderables(IO.file("assets"));
-        renderableFiles.sort((a, b) -> a.getPath().compareTo(b.getPath()));
+        renderableFiles.sort((a, b) -> a.getName().compareTo(b.getName()));
         for(File file : renderableFiles) {
             renderableNames.add(file.getName());
         }
@@ -149,12 +155,22 @@ public class Editor extends Demo {
             selScene = -1;
         }
         if(scene != null) {
-            if(ui.button("Editor.save.scene.button", 5, "Save Scene", false)) {
+            if(ui.button("Editor.save.scene.button", 5, "Save", false)) {
                 Scene.save(scene, sceneFile);
             }
-            if(ui.button("Editor.edit.scene.button", 5, "Edit Scene", editor == SCENE_EDITOR)) {
+            if(ui.button("Editor.edit.scene.button", 5, "Edit", editor == SCENE_EDITOR)) {
                 editor = SCENE_EDITOR;
                 resetSceneEditor = true;
+            }
+            if(clipboard != null) {
+                if(ui.button("Editor.paste.node.button", 5, "Paste", false)) {
+                    Node node = copy(clipboard);
+
+                    selection = node;
+                    scene.getRoot().addChild(selection);
+                    editor = NODE_EDITOR;
+                    resetNodeEditor = true;
+                }
             }
             if(ui.button("Editor.add.renderable.button", 5, "+Renderable", editor == RENDERABLES)) {
                 editor = RENDERABLES;
@@ -185,7 +201,10 @@ public class Editor extends Demo {
                     selection.getPosition().set(scene.getCamera().getTarget());
                 }
                 if(ui.button("Editor.target.to.pos.button", 5, "Target To Pos", false)) {
+                    Vector3f offset = scene.getCamera().getOffset();
+
                     scene.getCamera().getTarget().set(selection.getPosition());
+                    scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());
                 }
                 if(ui.button("Editor.zero.pos.button", 5, "Zero Pos", false)) {
                     selection.getPosition().zero();
@@ -195,6 +214,9 @@ public class Editor extends Demo {
                 }
                 if(ui.button("Editor.zero.rot.button", 5, "Zero Rot", false)) {
                     selection.getRotation().identity();
+                }
+                if(ui.button("Editor.copy.node.button", 5, "Copy", false)) {
+                    clipboard = copy(selection);
                 }
                 if(selection.getParent() != scene.getRoot()) {
                     if(ui.button("Editor.to.parent.button", 5, "To Parent", false)) {
@@ -242,6 +264,7 @@ public class Editor extends Demo {
                 scene.loadUI();
                 sceneFile = file;
                 selection = null;
+                clipboard = null;
                 editor = -1;
             }
             selScene = -2;
@@ -251,7 +274,10 @@ public class Editor extends Demo {
                 File file = renderableFiles.get((Integer)result);
 
                 if(IO.extension(file).equals(".obj")) {
-                    node = NodeLoader.load(file);
+                    node = NodeLoader.load(file, true);
+                    if(node.getChildCount() == 1) {
+                        node.getChild(0).getPosition().set(scene.getCamera().getTarget());
+                    }
                 } else {
                     File textureFile = IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png");
 
@@ -336,7 +362,7 @@ public class Editor extends Demo {
             ui.textField("Editor.node.editor.position.field", 0, "Position", selection.getPosition(), resetNodeEditor, 20);
             ui.addRow(5);
             ui.textField("Editor.node.editor.scale.field", 0, "Scale", selection.getScale(), resetNodeEditor, 20);
-            if(selection.hasMesh() || renderable instanceof KeyFrameMesh) {
+            if(selection.hasMesh() || renderable != null) {
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.ambient.color.field", 0, "Ambient", selection.getAmbientColor(), resetNodeEditor, 20);
                 ui.addRow(5);
@@ -354,19 +380,21 @@ public class Editor extends Demo {
                     }
                 }
                 ui.addRow(5);
-                if((result = ui.textField("Editor.node.editor.triangle.tag.field", 0, "Triangle Tag", selection.getTriangleTag(), resetNodeEditor, 10)) != null) {
-                    selection.setTriangleTag((Integer)result);
-                }
-                ui.addRow(5);
                 if((result = ui.textField("Editor.node.editor.z.order.field", 0, "Z Order", selection.getZOrder(), resetNodeEditor, 10)) != null) {
                     selection.setZOrder((Integer)result);
                 }
-                ui.addRow(5);
-                if(ui.button("Editor.node.editor.collidable.button", 0, "Collidable", selection.isCollidable())) {
-                    selection.setCollidable(!selection.isCollidable());
-                }
-                if(ui.button("Editor.node.editor.dynamic.button", 5, "Dynamic", selection.isDynamic())) {
-                    selection.setDynamic(!selection.isDynamic());
+                if(selection.hasMesh() || renderable != null) {
+                    ui.addRow(5);
+                    if((result = ui.textField("Editor.node.editor.triangle.tag.field", 0, "Triangle Tag", selection.getTriangleTag(), resetNodeEditor, 10)) != null) {
+                        selection.setTriangleTag((Integer)result);
+                    }
+                    ui.addRow(5);
+                    if(ui.button("Editor.node.editor.collidable.button", 0, "Collidable", selection.isCollidable())) {
+                        selection.setCollidable(!selection.isCollidable());
+                    }
+                    if(ui.button("Editor.node.editor.dynamic.button", 5, "Dynamic", selection.isDynamic())) {
+                        selection.setDynamic(!selection.isDynamic());
+                    }
                 }
                 ui.addRow(5);
                 if(ui.button("Editor.node.editor.lighting.enabled.button", 0, "Lit", selection.isLightingEnabled())) {
@@ -422,6 +450,20 @@ public class Editor extends Demo {
                             } catch(Exception ex) {
                             }
                         }
+                    }
+                    ui.addRow(5);
+                    if(ui.button("Editor.mesh.clear.tex.button", 0, "Clear Texture", false)) {
+                        selection.setTexture(null);
+                    }
+                } else if(selection.hasMesh()) {
+                    if(ui.button("Editor.mesh.warp.enabled.button", 0, "Warp Enabled", selection.isWarpEnabled())) {
+                        selection.setWarpEnabled(!selection.isWarpEnabled());
+                    }
+                    ui.addRow(5);
+                    ui.textField("Editor.mesh.warp.amplitude.field", 0, "Warp amplitude", selection.getWarpAmplitude(), resetNodeEditor, 15);
+                    ui.addRow(5);
+                    if((result = ui.textField("Editor.mesh.warp.speed.field", 0, "Warp Speed", selection.getWarpSpeed(), resetNodeEditor, 15)) != null) {
+                        selection.setWarpSpeed((Float)result);
                     }
                 }
             } else if(selection.isLight()) {
@@ -532,13 +574,17 @@ public class Editor extends Demo {
         return !quit;
     }
 
-    protected void updateNode(Node node) throws Exception {
+    public void updateNode(Node node) throws Exception {
+        fireLight(node);
+    }
+
+    public static void fireLight(Node node) {
         Renderable renderable = node.getRenderable();
 
         if(node.getName().equals("fire-light") && renderable instanceof ParticleSystem) {
             ParticleSystem particles = (ParticleSystem)renderable;
 
-            particles.getPosition().y = (float)Math.sin(Game.getInstance().getTotalTime() * 2) * 25;
+            particles.getPosition().y = (float)Math.sin(Game.getInstance().getTotalTime() * 2) * 30;
         }
     }
 
@@ -578,5 +624,29 @@ public class Editor extends Demo {
             }
         }
         sceneNames.sort((a, b) -> a.compareTo(b));
+    }
+
+    private Node copy(Node node) throws Exception {
+        ObjectOutputStream out = null;
+        ObjectInputStream in = null;
+        ByteArrayOutputStream outBytes = null;
+        Node copy = null;
+        try {
+            out = new ObjectOutputStream(outBytes = new ByteArrayOutputStream(1000));
+            out.writeObject(node);
+            try {
+                in = new ObjectInputStream(new ByteArrayInputStream(outBytes.toByteArray()));
+                copy = (Node)in.readObject();
+            } finally {
+                if(in != null) {
+                    in.close();
+                }
+            }
+        } finally {
+            if(out != null) {
+                out.close();
+            }
+        }
+        return copy;
     }
 }

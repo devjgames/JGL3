@@ -4,6 +4,7 @@ import java.util.Vector;
 
 import org.jgl3.GFX;
 import org.jgl3.Game;
+import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.scene.KeyFrameMeshLoader;
 import org.jgl3.scene.NodeLoader;
@@ -17,9 +18,8 @@ public class App {
 
         try {
             game = new Game(width, height, resizable);
-
-            KeyFrameMeshLoader.registerAssetLoader();
-            ParticleSystem.registerAssetLoader();
+            
+            registerAssetLoaders();
 
             Vector<String> demoNames = new Vector<>();
             int selDemo = -1;
@@ -71,12 +71,18 @@ public class App {
         }
     }
 
+    protected void registerAssetLoaders() {
+        KeyFrameMeshLoader.registerAssetLoader();
+        ParticleSystem.registerAssetLoader();
+    }
+
     public static void main(String[] args) throws Exception {
         NodeLoader.registerLoader(".obj", new NodeLoader.OBJLoader());
         
         new App(1000, 600, true,
             new Editor(),
-            new Island()
+            new Collide(IO.file("assets/scenes/collide.scn"), 800, -64, true),
+            new Collide(IO.file("assets/scenes/stone.scn"), 800, -64, false)
         );
     }
 }

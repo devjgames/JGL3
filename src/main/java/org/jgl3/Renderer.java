@@ -256,7 +256,7 @@ public final class Renderer extends Resource {
     public void render(float[] vertices) throws Exception {
         beginTriangles();
         if(vertices.length > vBuf.capacity()) {
-            Log.put(1, "Increasing renderer buffer capacity ...");
+            Log.put(1, "Renderer.render() increasing buffer capacity ...");
 
             FloatBuffer nBuf = BufferUtils.createFloatBuffer(vertices.length);
 

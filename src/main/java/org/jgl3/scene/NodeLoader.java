@@ -16,7 +16,7 @@ public final class NodeLoader {
     private static Hashtable<String, Loader> loaders = new Hashtable<>();
 
     public static interface Loader {
-        Node load(File file) throws Exception;
+        Node load(File file, boolean zeroCenters) throws Exception;
     }
 
     public static Vector<String> extensions() {
@@ -27,13 +27,12 @@ public final class NodeLoader {
         loaders.put(extension, loader);
     }
 
-
-    public static Node load(File file) throws Exception {
-        return loaders.get(IO.extension(file)).load(file);
+    public static Node load(File file, boolean zeroCenters) throws Exception {
+        return loaders.get(IO.extension(file)).load(file, zeroCenters);
     }
 
     public static class OBJLoader implements Loader {
-        public Node load(File file) throws Exception {
+        public Node load(File file, boolean zeroCenters) throws Exception {
             AssetManager assets = Game.getInstance().getAssets();
             String[] lines = new String(IO.readAllBytes(file)).split("\\n+");
             Vector<Vector3f> vList = new Vector<>();
@@ -126,7 +125,63 @@ public final class NodeLoader {
             root.setName(IO.fileNameWithOutExtension(file));
 
             root.traverse((n) -> {
+                n.calcMeshBounds();
+                return true;
+            });
+
+            if(zeroCenters) {
+                root.calcBoundsAndTransform(null);
+                for(int i = 0; i != root.getChildCount(); i++) {
+                    Vector3f center = root.getChild(i).getBounds().getCenter(new Vector3f());
+
+                    center.negate();
+                    for(int j = 0; j != root.getChild(i).getChildCount(); j++) {
+                        Node node = root.getChild(i).getChild(j);
+
+                        for(int k = 0; k != node.getVertexCount(); k++) {
+                            float x = node.getVertexComponent(k, 0);
+                            float y = node.getVertexComponent(k, 1);
+                            float z = node.getVertexComponent(k, 2);
+
+                            x += center.x;
+                            y += center.y;
+                            z += center.z;
+
+                            node.setVertexComponent(k, 0, x);
+                            node.setVertexComponent(k, 1, y);
+                            node.setVertexComponent(k, 2, z);
+                        }
+                    }
+                    center.negate();
+                    root.getChild(i).getPosition().set(center);
+                }
+            }
+
+            Vector<Node> nodes = new Vector<>();
+
+            for(int i = 0; i != root.getChildCount(); i++) {
+                Node node = root.getChild(i);
+
+                if(node.getChildCount() == 1) {
+                    Node child = node.getChild(0);
+
+                    nodes.add(child);
+                    child.setName(node.getName());
+                    child.detachFromParent();
+                } else {
+                    nodes.add(node);
+                }
+            }
+            root.detachAllChildren();
+            for(Node node : nodes) {
+                root.addChild(node);
+            }
+            if(root.getChildCount() == 1) {
+                root = root.getLastChild();
+            }
+            root.traverse((n) -> {
                 n.compileMesh();
+                n.calcMeshBounds();
                 return true;
             });
             

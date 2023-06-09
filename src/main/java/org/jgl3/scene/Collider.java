@@ -3,9 +3,11 @@ package org.jgl3.scene;
 import org.jgl3.BoundingBox;
 import org.jgl3.Game;
 import org.jgl3.OctTree;
+import org.jgl3.Sound;
 import org.jgl3.Triangle;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
 
 public final class Collider {
     
@@ -25,6 +27,7 @@ public final class Collider {
     private final Vector3f r = new Vector3f();
     private final Vector3f u = new Vector3f();
     private final Vector3f f = new Vector3f();
+    private final Vector3f offset = new Vector3f();
     private final float[] time = new float[1];
     private final Matrix4f groundMatrix = new Matrix4f();
     private float radius = 16;
@@ -177,6 +180,120 @@ public final class Collider {
         });
         return hit;
     }
+
+    public boolean move(Scene scene, Node node, float groundBuffer, int speed, int jump, Sound jumpSound, boolean xMoveOnly) throws Exception {
+        Game game = Game.getInstance();
+        boolean moving = true;
+        KeyFrameMesh mesh = null;
+        KeyFrameMesh weaponMesh = null;
+
+        setIntersectionBuffer(1);
+
+        if(node.getChildCount() != 0) {
+            if(node.getChild(0).getRenderable() instanceof KeyFrameMesh) {
+                mesh = (KeyFrameMesh)node.getChild(0).getRenderable();
+                if(node.getChild(0).getChildCount() != 0) {
+                    weaponMesh = (KeyFrameMesh)node.getChild(0).getChild(0).getRenderable();
+                }
+            }
+        }
+
+        if(game.isKeyDown(GLFW.GLFW_KEY_SPACE) && isOnGround() && jump > 0) {
+            jumpSound.play(false);
+            getVelocity().y = jump;
+        }
+
+        scene.getCamera().getEye().sub(scene.getCamera().getTarget(), offset);
+        getVelocity().mul(0, 1, 0);
+        if(xMoveOnly) {
+            if(game.isKeyDown(GLFW.GLFW_KEY_RIGHT)) {
+                node.getRotation().identity().rotate((float)Math.toRadians(0), 0, 1, 0);
+                getVelocity().x = speed;
+            } else if(game.isKeyDown(GLFW.GLFW_KEY_LEFT)) {
+                node.getRotation().identity().rotate((float)Math.toRadians(180), 0, 1, 0);
+                getVelocity().x = -speed;
+            } else {
+                node.getRotation().identity().rotate((float)Math.toRadians(-90), 0, 1, 0);
+                moving = false;
+            }
+        } else {
+            scene.getCamera().getOffset().mul(-1, 0, -1, f).normalize();
+            f.cross(0, 1, 0, r).normalize();
+            if(game.isKeyDown(GLFW.GLFW_KEY_RIGHT)) {
+                f.zero();
+                r.mul(speed);
+            } else if(game.isKeyDown(GLFW.GLFW_KEY_LEFT)) {
+                f.zero();
+                r.mul(-speed);
+            } else if(game.isKeyDown(GLFW.GLFW_KEY_UP)) {
+                f.mul(speed);
+                r.zero();
+            } else if(game.isKeyDown(GLFW.GLFW_KEY_DOWN)) {
+                f.mul(-speed);
+                r.zero();
+            } else {
+                moving = false;
+                f.zero();
+                r.zero();
+            }
+            getVelocity().add(f.add(r));
+            if(moving) {
+                f.normalize();
+                float a = (float)Math.acos(Math.max(-0.99f, Math.min(0.99f, f.x)));
+                if(f.z > 0) {
+                    a = (float)Math.PI * 2 - a;
+                }
+                node.getRotation().identity().rotate(a, 0, 1, 0);
+            }
+        }
+        if(mesh != null) {
+            boolean isect = false;
+            getOrigin().set(scene.getCamera().getTarget());
+            getDirection().set(0, -1, 0);
+            setTime(getRadius() + groundBuffer);
+            isect |= intersect(scene.getRoot()) != null;
+            getOrigin().x += getRadius();
+            isect |= intersect(scene.getRoot()) != null;
+            getOrigin().set(scene.getCamera().getTarget());
+            getOrigin().x -= getRadius();
+            isect |= intersect(scene.getRoot()) != null;
+            getOrigin().set(scene.getCamera().getTarget());
+            getOrigin().z += getRadius();
+            isect |= intersect(scene.getRoot()) != null;
+            getOrigin().set(scene.getCamera().getTarget());
+            getOrigin().z -= getRadius();
+            isect |= intersect(scene.getRoot()) != null;
+            if(isOnGround() || isect || jump <= 0) {
+                if(moving) {
+                    mesh.setSequence(40, 45, 8, true);
+                    if(weaponMesh != null) {
+                        weaponMesh.setSequence(40, 45, 8, true);
+                    }
+                } else {
+                   mesh.setSequence(0, 39, 10, true);
+                   if(weaponMesh != null) {
+                    weaponMesh.setSequence(0, 39, 10, true);
+                   }
+                }
+            } else {
+                mesh.setSequence(66, 71, 7, false);
+                if(weaponMesh != null) {
+                    weaponMesh.setSequence(66, 71, 7, false);
+                }
+            }
+        }
+        getPosition().set(node.getPosition());
+        collide(scene.getRoot());
+        if(xMoveOnly) {
+            getPosition().mul(1, 1, 0);
+        }
+        node.getPosition().set(getPosition());
+        scene.getCamera().getTarget().set(getPosition());
+        scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());
+
+        return moving;
+    }
+
 
     public Collider collide(Node node) throws Exception {
         Game game = Game.getInstance();

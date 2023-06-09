@@ -66,10 +66,8 @@ public final class Node implements Serializable {
     private transient float[] vertexArray = null;
     private transient OctTree octTree = null;
     private int minTrisPerTree = 16;
-    private final BoundingBox meshBounds = new BoundingBox();
-    private float warpAmplitudeX = 8;
-    private float warpAmplitudeY = 8;
-    private float warpAmplitudeZ = 8;
+    private transient BoundingBox meshBounds = null;
+    private Vector3f warpAmplitude = new Vector3f(8, 8, 8);
     private float warpSpeed = 1;
     private boolean warpEnabled = false;
     private boolean textureLinear = false;
@@ -387,7 +385,7 @@ public final class Node implements Serializable {
     }
 
     public Node calcBoundsAndTransform(Camera camera) {
-        if(followEye) {
+        if(followEye && camera != null) {
             position.set(camera.getEye());
         }
         model 
@@ -542,6 +540,20 @@ public final class Node implements Serializable {
         return this;
     }
 
+    public void calcMeshBounds() {
+        if(meshBounds == null) {
+            meshBounds = new BoundingBox();
+        }
+        meshBounds.clear();
+        for(int i = 0; i != getVertexCount(); i++) {
+            meshBounds.add(
+                getVertexComponent(i, 0),
+                getVertexComponent(i, 1),
+                getVertexComponent(i, 2)
+            );
+        }
+    }
+
     public Node push(float x, float y, float z, float s, float t, float u, float v, float nx, float ny, float nz, float r, float g, float b, float a) {
         vertices.add(x);
         vertices.add(y);
@@ -557,7 +569,6 @@ public final class Node implements Serializable {
         vertices.add(g);
         vertices.add(b);
         vertices.add(a);
-        meshBounds.add(x, y, z);
 
         return this;
     }
@@ -604,31 +615,8 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public float getWarpAmplitudeX() {
-        return warpAmplitudeX;
-    }
-
-    public Node setWarpAmplitudeX(float amplitude) {
-        warpAmplitudeX = amplitude;
-        return this;
-    }
-
-    public float getWarpAmplitudeY() {
-        return warpAmplitudeY;
-    }
-
-    public Node setWarpAmplitudeY(float amplitude) {
-        warpAmplitudeY = amplitude;
-        return this;
-    }
-
-    public float getWarpAmplitudeZ() {
-        return warpAmplitudeZ;
-    }
-
-    public Node setWarpAmplitudeZ(float amplitude) {
-        warpAmplitudeZ = amplitude;
-        return this;
+    public Vector3f getWarpAmplitude() {
+        return warpAmplitude;
     }
 
     public float getWarpSpeed() {
@@ -790,6 +778,7 @@ public final class Node implements Serializable {
                 ex.printStackTrace();
             }
         }
+        calcMeshBounds();
         compileMesh();
     }
 
