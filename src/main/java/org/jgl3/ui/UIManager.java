@@ -84,11 +84,15 @@ public final class UIManager extends Resource {
         return font;
     }
 
-    void pushRect(int x, int y, int w, int h, Vector4f color) {
+    public void pushRect(int x, int y, int w, int h, float r, float g, float b, float a) {
         game.getRenderer().push(
             font.getWhiteX(), font.getWhiteY(), 1, 1, x, y, w, h, 
-            color.x, color.y, color.z, color.w, false
+            r, g, b, a, false
             );
+    }
+
+    public void pushRect(int x, int y, int w, int h, Vector4f color) {
+        pushRect(x, y, w, h, color.x, color.y, color.z, color.w);
     }
 
     void pushText(String text, int x, int y, Vector4f color) {

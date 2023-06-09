@@ -4,9 +4,9 @@ import java.util.Vector;
 
 import org.jgl3.GFX;
 import org.jgl3.Game;
-import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.scene.KeyFrameMeshLoader;
+import org.jgl3.scene.NodeLoader;
 import org.jgl3.scene.ParticleSystem;
 import org.jgl3.ui.UIManager;
 
@@ -72,9 +72,11 @@ public class App {
     }
 
     public static void main(String[] args) throws Exception {
+        NodeLoader.registerLoader(".obj", new NodeLoader.OBJLoader());
+        
         new App(1000, 600, true,
             new Editor(),
-            new Player(IO.file("assets/scenes/scene1.scn"))
+            new Island()
         );
     }
 }

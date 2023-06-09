@@ -10,14 +10,14 @@ import org.jgl3.DepthState;
 import org.jgl3.GFX;
 import org.jgl3.Game;
 import org.jgl3.IO;
-import org.jgl3.PixelFormat;
-import org.jgl3.RenderTarget;
 import org.jgl3.Renderer;
+import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.jgl3.scene.KeyFrameMesh;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.NodeLoader;
 import org.jgl3.scene.ParticleSystem;
+import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
 import org.jgl3.ui.UIManager;
 import org.joml.Vector3f;
@@ -40,7 +40,6 @@ public class Editor extends Demo {
     private static final int RENDERABLES = 4;
 
     private Scene scene = null;
-    private RenderTarget renderTarget = null;
     private int mode = 0;
     private String[] modes = new String[] {
         "Zoom",
@@ -54,6 +53,7 @@ public class Editor extends Demo {
     };
     private int selScene = -1;
     private int selRenderable = -1;
+    private int selMatCap = -1;
     private int editor = -1;
     private String sceneName = "";
     private boolean resetNodeEditor = false;
@@ -63,6 +63,7 @@ public class Editor extends Demo {
     private final Vector<File> renderableFiles = new Vector<>();
     private final Vector<String> renderableNames = new Vector<>();
     private final Vector<String> sceneNames = new Vector<>();
+    private final Vector<String> matCapNames = new Vector<>();
     private boolean down = false;
     private final Vector3f origin = new Vector3f();
     private final Vector3f direction = new Vector3f();
@@ -70,14 +71,15 @@ public class Editor extends Demo {
     private final float[] time = new float[1];
     private final BoundingBox bounds = new BoundingBox();
     private final Triangle triangle = new Triangle();
+    private Vector<String> extensions = new Vector<>();
 
     @Override
     public void init() throws Exception {
         scene = null;
-        renderTarget = null;
         mode = 0;
         selScene = -1;
         selRenderable = -1;
+        selMatCap = -1;
         editor = -1;
         sceneName = "";
         resetNodeEditor = false;
@@ -85,6 +87,22 @@ public class Editor extends Demo {
         sceneFile = null;
         selection = null;
         down = false;
+
+        extensions = NodeLoader.extensions();
+
+        matCapNames.clear();
+        
+        File[] files = IO.file("assets/matcap").listFiles();
+
+        if(files != null) {
+            for(File file : files) {
+                if(IO.extension(file).equals(".png")) {
+                    matCapNames.add(IO.fileNameWithOutExtension(file));
+                }
+            }
+        }
+        matCapNames.sort((a, b) -> a.compareTo(b));
+        matCapNames.insertElementAt("NONE", 0);
 
         renderableFiles.clear();
         renderableNames.clear();
@@ -104,15 +122,12 @@ public class Editor extends Demo {
         boolean quit = false;
         Object result;
 
-        if(renderTarget != null) {
-            renderTarget.begin();
-            scene.render(renderTarget.getAspectRatio());
-            renderer.end();
-            renderTarget.end();
-        }
-
         GFX.clear(0.2f, 0.2f, 0.2f, 1);
-        renderer.begin();
+        if(scene != null) {
+            scene.render(game.getAspectRatio());
+        } else {
+            renderer.begin();
+        }
         ui.begin();
         if(ui.button("Editor.quit.button", 0, "Quit", false)) {
             quit = true;
@@ -149,83 +164,12 @@ public class Editor extends Demo {
                     mode = i;
                 } 
             }
-            ui.addRow(5);
-            ui.beginView("Editor.scene.view", 0, renderTarget.getTexture(0));
-            if(ui.isViewButtonDown()) {
-                if(mode == ZOOM) {
-                    scene.getCamera().zoom(game.getDY());
-                } else if(mode == ROT) {
-                    scene.getCamera().rotateAroundTarget(-game.getDX() * 0.025f, game.getDY() * 0.025f);
-                } else if(mode == PANXZ) {
-                    scene.getCamera().move(scene.getCamera().getTarget(), game.getDX(), -game.getDY());
-                } else if(mode == PANY) {
-                    scene.getCamera().move(scene.getCamera().getTarget(), -game.getDY());
-                } else if(mode == SEL) {
-                    if(!down) {
-                        int w = renderTarget.getWidth();
-                        int h = renderTarget.getHeight();
-                        int x = ui.getViewMouseX();
-                        int y = h - ui.getViewMouseY() - 1;
+            if(ui.button("Editor.dark.button", 5, "Dark", UIManager.BACKGROUND.x == 0)) {
+                float x = UIManager.BACKGROUND.x;
 
-                        scene.getCamera().unProject(x, y, 0, 0, 0, w, h, origin);
-                        scene.getCamera().unProject(x, y, 1, 0, 0, w, h, direction);
-                        direction.sub(origin).normalize();
-                        time[0] = Float.MAX_VALUE;
-
-                        selection = null;
-
-                        scene.getRoot().traverse((n) -> {
-                            bounds.clear();
-                            bounds.add(origin);
-                            bounds.add(point.set(direction).mul(time[0]).add(origin));
-                            if(bounds.touches(n.getBounds())) {
-                                for(int i = 0; i != n.getTriangleCount(); i++) {
-                                    n.getTriangle(i, triangle);
-                                    if(triangle.getNormal().dot(direction) < 0) {
-                                        if(triangle.intersects(origin, direction, 0, time)) {
-                                            selection = n;
-                                        }
-                                    }
-                                }
-                            }
-                            if(n.isLight()) {
-                                bounds.getMin().set(n.getAbsolutePosition()).sub(8, 8, 8);
-                                bounds.getMax().set(n.getAbsolutePosition()).add(8, 8, 8);
-                                if(bounds.intersects(origin, direction, time)) {
-                                    selection = n;
-                                }
-                            }
-                            return true;
-                        });
-                        if(selection == null) {
-                            editor = -1;
-                        } else {
-                            editor = NODE_EDITOR;
-                            resetNodeEditor = true;
-                        }
-                    }
-                } else if(selection != null) {
-                    if(mode == MOVXZ) {
-                        scene.getCamera().move(selection.getPosition(), game.getDX(), -game.getDY());
-                    } else if(mode == MOVY) {
-                        scene.getCamera().move(selection.getPosition(), -game.getDY());
-                    } else if(mode == ROTY && !selection.isLight()) {
-                        selection.getRotation().rotate(game.getDX() * 0.025f, 0, 1, 0);
-                    }
-                }
-                down = true;
-            } else {
-                if(down && selection != null && (mode == MOVXZ || mode == MOVY)) {
-                    int snap = Math.max(1, scene.getSnap());
-                    Vector3f p = selection.getPosition();
-
-                    p.x = (int)Math.floor(p.x / snap) * snap;
-                    p.y = (int)Math.floor(p.y / snap) * snap;
-                    p.z = (int)Math.floor(p.z / snap) * snap;
-                }
-                down = false;
+                UIManager.BACKGROUND.set(UIManager.FOREGROUND);
+                UIManager.FOREGROUND.set(x, x, x, 1);
             }
-            ui.endView();
             ui.addRow(5);
             if(selection != null) {
                 if(ui.button("Editor.pos.to.target.button", 0, "Pos To Target", false)) {
@@ -262,10 +206,8 @@ public class Editor extends Demo {
                     selection = null;
                 }
             }
-            ui.moveRightOf("Editor.scene.view", 5);
-        } else {
-            ui.addRow(5);
-        }
+        } 
+        ui.addRow(5);
         if(editor == ADD_SCENE) {
             if((result = ui.textField("Editor.scene.name.field", 0, "Name", "", false, 10)) != null) {
                 sceneName = (String)result;
@@ -289,7 +231,6 @@ public class Editor extends Demo {
                 sceneFile = null;
                 scene = Scene.load(file);
                 scene.loadUI();
-                createRenderTarget();
                 sceneFile = file;
                 selection = null;
                 editor = -1;
@@ -313,12 +254,22 @@ public class Editor extends Demo {
                     if(IO.extension(file).equals(".md2")) {
                         Node parent = new Node();
                         KeyFrameMesh mesh = (KeyFrameMesh)node.getRenderable();
+                        File weaponFile = IO.file(mesh.getFile().getParentFile(), IO.fileNameWithOutExtension(mesh.getFile()) + "-weapon.md2");
+                        File weaponTextureFile = IO.file(weaponFile.getParentFile(), IO.fileNameWithOutExtension(weaponFile) + ".png");
 
                         node.getPosition().y -= mesh.getFrame(0).getBounds().getMin().z;
                         node.getPosition().y -= 16;
                         node.getRotation().rotate((float)Math.toRadians(-90), 1, 0, 0);
-                        node.getAmbientColor().set(0.2f, 0.2f, 0.6f, 1);
-                        node.setLightingEnabled(true);
+                        if(weaponFile.exists()) {
+                            Node weapon = new Node();
+
+                            weapon.setRenderable(game.getAssets().load(weaponFile));
+                            weapon.setRenderable(weapon.getRenderable().newInstance());
+                            if(weaponTextureFile.exists()) {
+                                weapon.setTexture(game.getAssets().load(weaponTextureFile));
+                            }
+                            node.addChild(weapon);
+                        }
                         parent.addChild(node);
                         node = parent;
                     } else if(IO.extension(file).equals(".par")) {
@@ -352,6 +303,19 @@ public class Editor extends Demo {
             ui.textField("Editor.scene.editor.background.color.field", 0, "Background", scene.getBackgroundColor(), resetSceneEditor, 20);
             resetSceneEditor = false;
         } else if(editor == NODE_EDITOR) {
+            Renderable renderable = selection.getRenderable();
+
+            if(resetNodeEditor) {
+                Texture matCap = selection.getMatCap();
+                
+                selMatCap = -1;
+                if(matCap != null) {
+                    if(matCap.getFile() != null) {
+                        selMatCap = matCapNames.indexOf(IO.fileNameWithOutExtension(matCap.getFile()));
+                    }
+                }
+            }
+
             if((result = ui.textField("Editor.node.editor.name.field", 0, "Name", selection.getName(), resetNodeEditor, 20)) != null) {
                 selection.setName((String)result);
             }
@@ -363,13 +327,23 @@ public class Editor extends Demo {
             ui.textField("Editor.node.editor.position.field", 0, "Position", selection.getPosition(), resetNodeEditor, 20);
             ui.addRow(5);
             ui.textField("Editor.node.editor.scale.field", 0, "Scale", selection.getScale(), resetNodeEditor, 20);
-            if(selection.hasMesh()) {
+            if(selection.hasMesh() || renderable instanceof KeyFrameMesh) {
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.ambient.color.field", 0, "Ambient", selection.getAmbientColor(), resetNodeEditor, 20);
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.diffuse.color.field", 0, "Diffuse", selection.getDiffuseColor(), resetNodeEditor, 20);
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.color.field", 0, "Color", selection.getColor(), resetNodeEditor, 20);
+                ui.addRow(5);
+                if((result = ui.list("Editor.node.matcap.list", 0, matCapNames, 25, 4, selMatCap)) != null) {
+                    String name = matCapNames.get((Integer)result);
+
+                    if(name.equals("NONE")) {
+                        selection.setMatCap(null);
+                    } else {
+                        selection.setMatCap(game.getAssets().load(IO.file(IO.file("assets/matcap"), name + ".png")));
+                    }
+                }
                 ui.addRow(5);
                 if((result = ui.textField("Editor.node.editor.triangle.tag.field", 0, "Triangle Tag", selection.getTriangleTag(), resetNodeEditor, 10)) != null) {
                     selection.setTriangleTag((Integer)result);
@@ -389,25 +363,9 @@ public class Editor extends Demo {
                 if(ui.button("Editor.node.editor.lighting.enabled.button", 0, "Lit", selection.isLightingEnabled())) {
                     selection.setLightingEnabled(!selection.isLightingEnabled());
                 }
-                if(ui.button("Editor.node.editor.light.map.enabled.button", 5, "Light Mapped", selection.isLightMapEnabled())) {
-                    selection.setLightMapEnabled(!selection.isLightMapEnabled());
-                }
-                ui.addRow(5);
-                if(ui.button("Editor.node.editor.casts.shadow.button", 0, "Casts Shadow", selection.getCastsShadow())) {
-                    selection.setCastsShadow(!selection.getCastsShadow());
-                }
-                if(ui.button("Editor.node.editor.receives.shadow.button", 5, "Receives Shadow", selection.getReceivesShadow())) {
-                    selection.setReceivesShadow(!selection.getReceivesShadow());
-                }
-                ui.addRow(5);
                 if(selection.getTexture() != null) {
-                    if(ui.button("Editor.node.editor.textureLinear.button", 0, "Linear", selection.isTextureLinear())) {
+                    if(ui.button("Editor.node.editor.textureLinear.button", 5, "Linear", selection.isTextureLinear())) {
                         selection.setTextureLinear(!selection.isTextureLinear());
-                        if(selection.isTextureLinear()) {
-                            selection.getTexture().toLinear(false);
-                        } else {
-                            selection.getTexture().toNearest(false);
-                        }
                     }
                 }
                 ui.addRow(5);
@@ -427,6 +385,36 @@ public class Editor extends Demo {
                 if(ui.button("Editor.node.editor.cull.enabled.button", 0, "Cull Enabled", selection.getCullState() != CullState.NONE)) {
                     selection.setCullState((selection.getCullState() == CullState.NONE) ? CullState.BACK : CullState.NONE);
                 }
+                ui.addRow(5);
+                if(renderable instanceof KeyFrameMesh) {
+                    KeyFrameMesh mesh = (KeyFrameMesh)renderable;
+
+                    if((result = ui.textField("Editor.node.seq.field", 0, "Sequence", "" + mesh.getStart() + " " + mesh.getEnd() + " " + mesh.getSpeed(), resetNodeEditor, 15)) != null) {
+                        String[] tokens = ((String)result).split("\\s+");
+
+                        if(tokens.length == 3) {
+                            try {
+                                int start = Integer.parseInt(tokens[0]);
+                                int end = Integer.parseInt(tokens[1]);
+                                int speed = Integer.parseInt(tokens[2]);
+
+                                mesh.setSequence(start, end, speed, true);
+
+                                scene.getRoot().traverse((n) -> {
+                                    Renderable r = n.getRenderable();
+
+                                    if(r instanceof KeyFrameMesh) {
+                                        KeyFrameMesh m = (KeyFrameMesh)r;
+
+                                        m.reset();
+                                    }
+                                    return true;
+                                });
+                            } catch(Exception ex) {
+                            }
+                        }
+                    }
+                }
             } else if(selection.isLight()) {
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.light.color.field", 0, "Color", selection.getLightColor(), resetNodeEditor, 20);
@@ -434,37 +422,112 @@ public class Editor extends Demo {
                 if((result = ui.textField("Editor.node.editor.light.radius.field", 0, "Radius", selection.getLightRadius(), resetNodeEditor, 10)) != null) {
                     selection.setLightRadius((Float)result);
                 }
-                ui.addRow(5);
-                if((result = ui.textField("Editor.node.editor.light.sample.radius.field", 0, "Sample Radius", selection.getLightSampleRadius(), resetNodeEditor, 10)) != null) {
-                    selection.setLightSampleRadius((Float)result);
-                }
-                ui.addRow(5);
-                if((result = ui.textField("Editor.node.editor.light.sample.count.field", 0, "Samples", selection.getLightSampleCount(), resetNodeEditor, 10)) != null) {
-                    selection.setLightSampleCount(Math.max(1, (Integer)result));
-                }
             } 
             resetNodeEditor = false;
+            selMatCap = -2;
         }
-        ui.end();
+        boolean handled = ui.end();
         renderer.end();
 
         if(scene != null) {
+            if(!handled) {
+                if(game.isButtonDown(0)) {
+                    if(mode == ZOOM) {
+                        scene.getCamera().zoom(game.getDY());
+                    } else if(mode == ROT) {
+                        scene.getCamera().rotateAroundTarget(-game.getDX() * 0.025f, game.getDY() * 0.025f);
+                    } else if(mode == PANXZ) {
+                        scene.getCamera().move(scene.getCamera().getTarget(), game.getDX(), -game.getDY());
+                    } else if(mode == PANY) {
+                        scene.getCamera().move(scene.getCamera().getTarget(), -game.getDY());
+                    } else if(mode == SEL) {
+                        if(!down) {
+                            int w = game.getWidth();
+                            int h = game.getHeight();
+                            int x = game.getMouseX();
+                            int y = h - game.getMouseY() - 1;
+
+                            scene.getCamera().unProject(x, y, 0, 0, 0, w, h, origin);
+                            scene.getCamera().unProject(x, y, 1, 0, 0, w, h, direction);
+                            direction.sub(origin).normalize();
+                            time[0] = Float.MAX_VALUE;
+
+                            selection = null;
+
+                            scene.getRoot().traverse((n) -> {
+                                bounds.clear();
+                                bounds.add(origin);
+                                bounds.add(point.set(direction).mul(time[0]).add(origin));
+                                if(bounds.touches(n.getBounds())) {
+                                    for(int i = 0; i != n.getTriangleCount(); i++) {
+                                        n.getTriangle(i, triangle);
+                                        if(triangle.getNormal().dot(direction) < 0) {
+                                            if(triangle.intersects(origin, direction, 0, time)) {
+                                                selection = n;
+                                            }
+                                        }
+                                    }
+                                }
+                                if(n.isLight()) {
+                                    Node uiNode = scene.getUI();
+
+                                    uiNode.getPosition().set(n.getPosition());
+                                    uiNode.calcBoundsAndTransform(scene.getCamera());
+                                    if(bounds.touches(uiNode.getBounds())) {
+                                        for(int i = 0; i != uiNode.getTriangleCount(); i++) {
+                                            uiNode.getTriangle(i, triangle);
+                                            if(triangle.getNormal().dot(direction) < 0) {
+                                                if(triangle.intersects(origin, direction, 0, time)) {
+                                                    selection = n;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                return true;
+                            });
+                            if(selection == null) {
+                                editor = -1;
+                            } else {
+                                editor = NODE_EDITOR;
+                                resetNodeEditor = true;
+                            }
+                        }
+                    } else if(selection != null) {
+                        if(mode == MOVXZ) {
+                            scene.getCamera().move(selection.getPosition(), game.getDX(), -game.getDY());
+                        } else if(mode == MOVY) {
+                            scene.getCamera().move(selection.getPosition(), -game.getDY());
+                        } else if(mode == ROTY && !selection.isLight()) {
+                            selection.getRotation().rotate(game.getDX() * 0.025f, 0, 1, 0);
+                        }
+                    }
+                    down = true;
+                } else {
+                    if(down && selection != null && (mode == MOVXZ || mode == MOVY)) {
+                        int snap = Math.max(1, scene.getSnap());
+                        Vector3f p = selection.getPosition();
+
+                        p.x = (int)Math.floor(p.x / snap) * snap;
+                        p.y = (int)Math.floor(p.y / snap) * snap;
+                        p.z = (int)Math.floor(p.z / snap) * snap;
+                    }
+                    down = false;
+                }
+            }
             scene.getRoot().traverse((n) -> {
                 updateNode(n);
                 return true;
             });
         }
-
         return !quit;
     }
 
     protected void updateNode(Node node) throws Exception {
-        if(node.getRenderable() instanceof KeyFrameMesh) {
-            KeyFrameMesh mesh = (KeyFrameMesh)node.getRenderable();
+        Renderable renderable = node.getRenderable();
 
-            mesh.setSequence(0, 39, 9, true);
-        } else if(node.getName().equals("fire-light")) {
-            ParticleSystem particles = (ParticleSystem)node.getRenderable();
+        if(node.getName().equals("fire-light") && renderable instanceof ParticleSystem) {
+            ParticleSystem particles = (ParticleSystem)renderable;
 
             particles.getPosition().y = (float)Math.sin(Game.getInstance().getTotalTime() * 2) * 25;
         }
@@ -481,7 +544,7 @@ public class Editor extends Demo {
                 if(!file.isDirectory()) {
                     String extension = IO.extension(file);
 
-                    if(extension.equals(".obj") || extension.equals(".md2") || extension.equals(".par")) {
+                    if(extensions.contains(extension) || extension.equals(".md2") || extension.equals(".par")) {
                         renderableFiles.add(file);
                     }
                 }
@@ -506,12 +569,5 @@ public class Editor extends Demo {
             }
         }
         sceneNames.sort((a, b) -> a.compareTo(b));
-    }
-
-    private void createRenderTarget() throws Exception {
-        Game game = Game.getInstance();
-        int s = game.getScale();
-
-        renderTarget = game.getAssets().manage(new RenderTarget(700 * s, 500 * s, PixelFormat.COLOR));
     }
 }

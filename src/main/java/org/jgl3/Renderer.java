@@ -19,11 +19,13 @@ public final class Renderer extends Resource {
     private final int[] uLightRadius = new int[MAX_LIGHTS];
     private final int uLightCount, uLightingEnabled, uVertexColorEnabled;
     private final int uAmbientColor, uDiffuseColor, uColor;
+    private final int uEye;
     private final int uProjection, uView, uModel, uModelIT;
+    private final int uModelViewMatrix, uNormalMatrix;
     private final int uTexture, uTextureEnabled;
     private final int uTexture2, uTexture2Enabled;
+    private final int uMatCap, uMatCapEnabled;
     private final int uLayerColor;
-    private final Matrix4f model = new Matrix4f();
     private final Matrix4f temp = new Matrix4f();
     private FloatBuffer vBuf = BufferUtils.createFloatBuffer(COMPONENTS * 3);
     private Texture texture = null;
@@ -52,14 +54,19 @@ public final class Renderer extends Resource {
         uAmbientColor = pipeline.getUniform("uAmbientColor");
         uDiffuseColor = pipeline.getUniform("uDiffuseColor");
         uColor = pipeline.getUniform("uColor");
+        uEye = pipeline.getUniform("uEye");
         uProjection = pipeline.getUniform("uProjection");
         uView = pipeline.getUniform("uView");
         uModel = pipeline.getUniform("uModel");
         uModelIT = pipeline.getUniform("uModelIT");
+        uModelViewMatrix = pipeline.getUniform("uModelViewMatrix");
+        uNormalMatrix = pipeline.getUniform("uNormalMatrix");
         uTexture = pipeline.getUniform("uTexture");
         uTextureEnabled = pipeline.getUniform("uTextureEnabled");
         uTexture2 = pipeline.getUniform("uTexture2");
         uTexture2Enabled = pipeline.getUniform("uTexture2Enabled");
+        uMatCap = pipeline.getUniform("uMatCap");
+        uMatCapEnabled = pipeline.getUniform("uMatCapEnabled");
         uLayerColor = pipeline.getUniform("uLayerColor");
     }
 
@@ -73,12 +80,15 @@ public final class Renderer extends Resource {
         setAmbientColor(0, 0, 0, 0);
         setDiffuseColor(1, 1, 1, 1);
         setColor(1, 1, 1, 1);
+        setEye(0, 0, 0);
         setLayerColor(0, 0, 0, 0);
         setProjection(temp.identity());
         setView(temp);
         setModel(temp);
+        setModelViewMatrix(temp, temp);
         setTexture(null);
         setTexture2(null);
+        setMatCap(null);
 
         texture = null;
         font = null;
@@ -140,6 +150,14 @@ public final class Renderer extends Resource {
         pipeline.set(uColor, color);
     }
 
+    public void setEye(float x, float y, float z) {
+        pipeline.set(uEye, x, y, z);
+    }
+
+    public void setEye(Vector3f eye) {
+        pipeline.set(uEye, eye);
+    }
+
     public void setLayerColor(float r, float g, float b, float a) {
         pipeline.set(uLayerColor, r, g, b, a);
     }
@@ -152,28 +170,8 @@ public final class Renderer extends Resource {
         pipeline.set(uProjection, projection);
     }
 
-    public void setProjectionOrtho(float l, float r, float b, float t, float znear, float zfar) {
-        setProjection(temp.identity().ortho(l, r, b, t, znear, zfar));
-    }
-
-    public void setProjectionFieldOfView(float fovDegrees, float aspectRatio, float znear, float zfar) {
-        setProjection(temp.identity().perspective((float)Math.toRadians(fovDegrees), aspectRatio, znear, zfar));
-    }
-
     public void setView(Matrix4f view) {
         pipeline.set(uView, view);
-    }
-
-    public void setViewLookAt(float ex, float ey, float ez, float tx, float ty, float tz, float ux, float uy, float uz) {
-        pipeline.set(uView, temp.identity().lookAt(ex, ey, ez, tx, ty, tz, ux, uy, uz));
-    }
-
-    public void setViewLookAt(Vector3f eye, Vector3f target, Vector3f up) {
-        pipeline.set(uView, temp.identity().lookAt(eye, target, up));
-    }
-
-    public Matrix4f getModel() {
-        return model;
     }
 
     public void setModel(Matrix4f model) {
@@ -181,8 +179,9 @@ public final class Renderer extends Resource {
         pipeline.set(uModelIT, model.invert(temp).transpose());
     }
 
-    public void setModel() {
-        setModel(model);
+    public void setModelViewMatrix(Matrix4f model, Matrix4f view) {
+        pipeline.set(uModelViewMatrix, temp.set(view).mul(model));
+        pipeline.set(uNormalMatrix, temp.invert().transpose());
     }
 
     public void setTexture(Texture texture) {
@@ -206,6 +205,13 @@ public final class Renderer extends Resource {
         }
     }
 
+    public void setMatCap(Texture texture) {
+        pipeline.set(uMatCapEnabled, texture != null);
+        if(texture != null) {
+            pipeline.set(uMatCap, 2, texture);
+        }
+    }
+
     public void initSprites() {
         Game game = Game.getInstance();
 
@@ -213,13 +219,15 @@ public final class Renderer extends Resource {
     }
 
     public void initSprites(int w, int h) {
-        setProjectionOrtho(0, w, h, 0, -1, 1);
+        setProjection(temp.identity().ortho(0, w, h, 0, -1, 1));
         setView(temp.identity());
         setModel(temp);
+        setModelViewMatrix(temp, temp);
         setLightingEnabled(false);
         setVertexColorEnabled(true);
         setTexture(null);
         setTexture2(null);
+        setMatCap(null);
         font = null;
 
         GFX.setDepthState(DepthState.NONE);

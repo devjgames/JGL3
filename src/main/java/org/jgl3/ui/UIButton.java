@@ -7,13 +7,13 @@ class UIButton extends UIControl {
     private boolean clicked = false;
     private boolean down = false;
 
-    public UIButton(UIManager manager, String title) {
+    public UIButton(UIManager ui, String title) {
         super(
-            manager,
-            title.length() * manager.getFont().getCharWidth() * manager.getFont().getScale() + 
-            manager.getPadding() * 2, 
-            manager.getFont().getCharHeight() * manager.getFont().getScale() + 
-            manager.getPadding() * 2
+            ui,
+            title.length() * ui.getFont().getCharWidth() * ui.getFont().getScale() + 
+            ui.getPadding() * 2, 
+            ui.getFont().getCharHeight() * ui.getFont().getScale() + 
+            ui.getPadding() * 2
             );
         this.title = title;
     }
@@ -32,19 +32,19 @@ class UIButton extends UIControl {
 
     @Override
     public void onPushRects() {
-        int p = getManager().getGame().getScale();
+        int p = getUI().getGame().getScale();
 
-        getManager().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
-        getManager().pushRect(
+        getUI().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
+        getUI().pushRect(
             getX() + p, getY() + p, getWidth() - p * 2, getHeight() - p * 2, UIManager.BACKGROUND
             );
     }
 
     public void onPushText() {
-        getManager().pushText(
+        getUI().pushText(
             title, 
-            getX() + getManager().getPadding(),
-            getY() + getManager().getPadding(),
+            getX() + getUI().getPadding(),
+            getY() + getUI().getPadding(),
             (selected) ? 
                 ((down) ? UIManager.FOREGROUND : UIManager.SELECTED) : 
                 ((down) ? UIManager.SELECTED : UIManager.FOREGROUND)

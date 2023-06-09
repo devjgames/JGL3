@@ -3,7 +3,6 @@ package org.jgl3.scene;
 import java.io.Serializable;
 
 import org.jgl3.GFX;
-import org.jgl3.Game;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -132,10 +131,6 @@ public final class Camera implements Serializable {
         target.add(x.normalize().mul(len + amount), eye);
 
         return this;
-    }
-
-    public Vector3f unProject(float z, Game game, Vector3f point) {
-        return unProject(game.getMouseX(), game.getHeight() - game.getMouseY() - 1, z, 0, 0, game.getWidth(), game.getHeight(), point);
     }
 
     public Vector3f unProject(float wx, float wy, float wz, int vx, int vy, int vw, int vh, Vector3f point) {

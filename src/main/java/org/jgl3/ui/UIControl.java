@@ -2,20 +2,20 @@ package org.jgl3.ui;
 
 abstract class UIControl {
     
-    private final UIManager manager;
+    private final UIManager ui;
     private int x = 0;
     private int y = 0;
     private final int w;
     private final int h;
 
-    public UIControl(UIManager manager, int w, int h) {
+    public UIControl(UIManager ui, int w, int h) {
         this.w = w;
         this.h = h;
-        this.manager = manager;
+        this.ui = ui;
     }
 
-    public UIManager getManager() {
-        return manager;
+    public UIManager getUI() {
+        return ui;
     }
 
     public int getX() {

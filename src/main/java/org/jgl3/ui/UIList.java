@@ -14,13 +14,13 @@ class UIList extends UIControl {
     private int selectedIndex = -1;
     private boolean drag = false;
 
-    public UIList(UIManager manager, int cols, int rows) {
+    public UIList(UIManager ui, int cols, int rows) {
         super(
-            manager, 
-            cols * manager.getFont().getCharWidth() * manager.getFont().getScale() + 
-            manager.getGame().getScale() * 4 + 8 * manager.getGame().getScale(), 
-            rows * manager.getFont().getCharHeight() * manager.getFont().getScale() + 
-            manager.getGame().getScale() * 6
+            ui, 
+            cols * ui.getFont().getCharWidth() * ui.getFont().getScale() + 
+            ui.getGame().getScale() * 4 + 8 * ui.getGame().getScale(), 
+            rows * ui.getFont().getCharHeight() * ui.getFont().getScale() + 
+            ui.getGame().getScale() * 6
         );
 
         this.cols = cols;
@@ -65,14 +65,14 @@ class UIList extends UIControl {
 
     @Override
     public void onPushRects() {
-        int p = getManager().getGame().getScale();
+        int p = getUI().getGame().getScale();
 
-        getManager().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
-        getManager().pushRect(
+        getUI().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
+        getUI().pushRect(
             getX() + p, getY() + p, getWidth() - p * 2, getHeight() - p * 2, UIManager.BACKGROUND
             );
         if(thumbSize > 0) {
-            getManager().pushRect(
+            getUI().pushRect(
                 getX() + (getWidth() - 8 * p), getY() + thumbPosition + p, 8 * p, thumbSize, 
                 UIManager.FOREGROUND
                 );
@@ -81,8 +81,8 @@ class UIList extends UIControl {
 
     @Override
     public void onPushText() {
-        int p = getManager().getGame().getScale();
-        int ch = getManager().getFont().getCharHeight() * getManager().getFont().getScale();
+        int p = getUI().getGame().getScale();
+        int ch = getUI().getFont().getCharHeight() * getUI().getFont().getScale();
 
         for(int i = 0; i != rows; i++) {
             int j = start + i;
@@ -95,14 +95,14 @@ class UIList extends UIControl {
                 item = item.substring(0, cols);
             }
             if(j == selectedIndex) {
-                getManager().pushText(
+                getUI().pushText(
                     item, 
                     getX() + p * 3, 
                     getY() + p * 3 + i * ch + p, 
                     UIManager.SELECTED
                     );
             } else {
-                getManager().pushText(
+                getUI().pushText(
                     item, 
                     getX() + p * 3, 
                     getY() + p * 3 + i * ch + p, 
@@ -114,8 +114,8 @@ class UIList extends UIControl {
 
     @Override
     public void onMouseButtonDown(int x, int y) {
-        int p = getManager().getGame().getScale();
-        int ch = getManager().getFont().getCharHeight() * getManager().getFont().getScale();
+        int p = getUI().getGame().getScale();
+        int ch = getUI().getFont().getCharHeight() * getUI().getFont().getScale();
 
         if(
             x >= getX() + getWidth() - 8 * p &&  
@@ -153,7 +153,7 @@ class UIList extends UIControl {
     @Override
     public void onMouseMove(int x, int y) {
         if(drag) {
-            int p = getManager().getGame().getScale();
+            int p = getUI().getGame().getScale();
 
             thumbPosition = y - getY();
             thumbPosition = Math.max(0, thumbPosition);
@@ -166,7 +166,7 @@ class UIList extends UIControl {
 
     private void calcThumb() {
         if(items.size() > rows) {
-            int p = getManager().getGame().getScale();
+            int p = getUI().getGame().getScale();
 
             thumbSize = (int)((rows / (float)items.size()) * getHeight());
             thumbSize = Math.max(8 * p, thumbSize);

@@ -9,9 +9,9 @@ class UIView extends UIControl {
     private boolean down = false;
     private Texture texture = null;
 
-    public UIView(UIManager manager, int width, int height) {
+    public UIView(UIManager ui, int width, int height) {
         super(
-            manager, 
+            ui, 
             width + 2 * Game.getInstance().getScale(), 
             height + 2 * Game.getInstance().getScale()
             );
@@ -26,22 +26,22 @@ class UIView extends UIControl {
     }
 
     public int getMouseX() {
-        return Game.getInstance().getMouseX() - getX() - getManager().getGame().getScale();
+        return Game.getInstance().getMouseX() - getX() - getUI().getGame().getScale();
     }
 
     public int getMouseY() {
-        return Game.getInstance().getMouseY() - getY() - getManager().getGame().getScale();
+        return Game.getInstance().getMouseY() - getY() - getUI().getGame().getScale();
     }
 
     @Override
     public void onPushRects() {
-        getManager().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
+        getUI().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
     }
 
     @Override
     public void onPushImages() throws Exception {
-        Renderer renderer = getManager().getGame().getRenderer();
-        int s = getManager().getGame().getScale();
+        Renderer renderer = getUI().getGame().getRenderer();
+        int s = getUI().getGame().getScale();
 
         renderer.setTexture(texture);
         renderer.beginTriangles();

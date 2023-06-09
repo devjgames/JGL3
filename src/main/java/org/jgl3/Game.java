@@ -19,7 +19,7 @@ public final class Game {
     private final AssetManager assets;
     private final SoundEngine soundEngine;
     private final Renderer renderer;
-    private final UIManager ui;
+    private UIManager ui;
     private final double[] x = new double[1];
     private final double[] y = new double[1];
     private final int[] w = new int[1];
@@ -112,6 +112,11 @@ public final class Game {
 
     public UIManager getUI() {
         return ui;
+    }
+
+    public void setUI(UIManager ui) throws Exception {
+        resources.unManage(ui);
+        this.ui = resources.manage(ui);
     }
 
     public int getWidth() {

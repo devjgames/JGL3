@@ -10,12 +10,12 @@ class UISlider extends UIControl {
     private float value = 0;
     private boolean drag = false;
     
-    public UISlider(UIManager manager, String title, int cols) {
+    public UISlider(UIManager ui, String title, int cols) {
         super(
-            manager,
-            manager.getPadding() * 3 + cols * manager.getFont().getCharWidth() * manager.getFont().getScale() + 
-            title.length() * manager.getFont().getCharWidth() * manager.getFont().getScale(),
-            2 * manager.getPadding() + manager.getFont().getCharHeight() * manager.getFont().getScale()
+            ui,
+            ui.getPadding() * 3 + cols * ui.getFont().getCharWidth() * ui.getFont().getScale() + 
+            title.length() * ui.getFont().getCharWidth() * ui.getFont().getScale(),
+            2 * ui.getPadding() + ui.getFont().getCharHeight() * ui.getFont().getScale()
         );
 
         this.title = title;
@@ -35,25 +35,25 @@ class UISlider extends UIControl {
     }
 
     private int getThumbX() {
-        return getX() + getManager().getPadding() + (int)(value * (getSliderLength() - getThumbSize()));
+        return getX() + getUI().getPadding() + (int)(value * (getSliderLength() - getThumbSize()));
     }
 
     private int getThumbSize() {
-        return getManager().getFont().getCharHeight() * getManager().getFont().getScale();
+        return getUI().getFont().getCharHeight() * getUI().getFont().getScale();
     }
 
     private int getThumbY() {
-        return getY() + getManager().getPadding();
+        return getY() + getUI().getPadding();
     }
 
     private int getSliderY() {
-        int ch = getManager().getFont().getCharHeight() * getManager().getFont().getScale();
+        int ch = getUI().getFont().getCharHeight() * getUI().getFont().getScale();
 
         return getThumbY() + ch / 2;
     }
 
     private int getSliderLength() {
-        return cols * getManager().getFont().getCharWidth() * getManager().getFont().getScale() - Game.getInstance().getScale() * 2;
+        return cols * getUI().getFont().getCharWidth() * getUI().getFont().getScale() - Game.getInstance().getScale() * 2;
     }
 
     @Override
@@ -62,23 +62,23 @@ class UISlider extends UIControl {
         int y = getThumbY();
         int l = getSliderLength();
         int s = getThumbSize();
-        int p = getManager().getPadding();
+        int p = getUI().getPadding();
         int ps = Game.getInstance().getScale();
 
-        getManager().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
-        getManager().pushRect(getX() + ps, getY() + ps, getWidth() - ps * 2, getHeight() - ps * 2, UIManager.BACKGROUND);
-        getManager().pushRect(getX() + p, getSliderY(), l, ps, UIManager.FOREGROUND);
-        getManager().pushRect(x, y, s, s, UIManager.FOREGROUND);
+        getUI().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
+        getUI().pushRect(getX() + ps, getY() + ps, getWidth() - ps * 2, getHeight() - ps * 2, UIManager.BACKGROUND);
+        getUI().pushRect(getX() + p, getSliderY(), l, ps, UIManager.FOREGROUND);
+        getUI().pushRect(x, y, s, s, UIManager.FOREGROUND);
     }
 
     @Override
     public void onPushText() {
         int x = getX() + Game.getInstance().getScale();
         int y = getY() + Game.getInstance().getScale();
-        int p = getManager().getPadding();
+        int p = getUI().getPadding();
         int l = getSliderLength();
 
-        getManager().pushText(title, x + p + l + p, y + p, UIManager.SELECTED);
+        getUI().pushText(title, x + p + l + p, y + p, UIManager.SELECTED);
     }
 
     @Override

@@ -34,19 +34,15 @@ public final class Node implements Serializable {
     private boolean dynamic = false;
     private boolean lightingEnabled = false;
     private boolean vertexColorEnabled = false;
-    private boolean lightMapEnabled = false;
-    private boolean castsShadow = true;
-    private boolean receivesShadow = true;
     private boolean isLight = false;
     private float lightRadius = 300;
-    private float lightSampleRadius = 32;
-    private int lightSampleCount = 32;
     private DepthState depthState = DepthState.READWRITE;
     private BlendState blendState = BlendState.OPAQUE;
     private CullState cullState = CullState.BACK;
     private boolean followEye = false;
     private transient Texture texture = null;
     private transient Texture texture2 = null;
+    private transient Texture matCap = null;
     private transient Renderable renderable = null;
     private final Vector4f lightColor = new Vector4f(1, 1, 1, 1);
     private final Vector4f ambientColor = new Vector4f(0, 0, 0, 1);
@@ -70,7 +66,11 @@ public final class Node implements Serializable {
     private transient OctTree octTree = null;
     private int minTrisPerTree = 16;
     private final BoundingBox meshBounds = new BoundingBox();
-    private transient float[] baseVertices = null;
+    private transient float[] warpVertices = null;
+    private float warpAmplitudeX = 8;
+    private float warpAmplitudeY = 8;
+    private float warpAmplitudeZ = 8;
+    private float warpSpeed = 1;
     private boolean textureLinear = false;
     private boolean textureClampToEdge = false;
     private boolean texture2Linear = true;
@@ -139,33 +139,6 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public boolean isLightMapEnabled() {
-        return lightMapEnabled;
-    }
-
-    public Node setLightMapEnabled(boolean enabled) {
-        lightMapEnabled = enabled;
-        return this;
-    }
-
-    public boolean getCastsShadow() {
-        return castsShadow;
-    }
-
-    public Node setCastsShadow(boolean castsShadow) {
-        this.castsShadow = castsShadow;
-        return this;
-    }
-
-    public boolean getReceivesShadow() {
-        return receivesShadow;
-    }
-
-    public Node setReceivesShadow(boolean receivesShadow) {
-        this.receivesShadow = receivesShadow;
-        return this;
-    }
-
     public boolean isLight() {
         return isLight;
     }
@@ -181,24 +154,6 @@ public final class Node implements Serializable {
 
     public Node setLightRadius(float radius) {
         lightRadius = radius;
-        return this;
-    }
-
-    public float getLightSampleRadius() {
-        return lightSampleRadius;
-    }
-
-    public Node setLightSampleRadius(float radius) {
-        lightSampleRadius = radius;
-        return this;
-    }
-
-    public int getLightSampleCount() {
-        return lightSampleCount;
-    }
-
-    public Node setLightSampleCount(int count) {
-        lightSampleCount = count;
         return this;
     }
 
@@ -238,12 +193,24 @@ public final class Node implements Serializable {
         return this;
     }
 
+    public Texture getMatCap() {
+        return matCap;
+    }
+
+    public Node setMatCap(Texture texture) {
+        matCap = texture;
+        if(matCap != null) {
+            matCap.toLinear(true);
+        }
+        return this;
+    }
+
     public Texture getTexture() {
         return texture;
     }
 
     public Node setTexture(Texture texture) {
-        this.texture = texture;
+        setState(this.texture = texture, textureLinear, textureClampToEdge);
         return this;
     }
 
@@ -252,7 +219,7 @@ public final class Node implements Serializable {
     }
 
     public Node setTextureLinear(boolean linear) {
-        textureLinear = linear;
+        setState(texture, textureLinear = linear, textureClampToEdge);
         return this;
     }
 
@@ -261,7 +228,7 @@ public final class Node implements Serializable {
     }
 
     public Node setClampTextureToEdge(boolean clamp) {
-        textureClampToEdge = clamp;
+        setState(texture, textureLinear, textureClampToEdge = clamp);
         return this;
     }
 
@@ -269,12 +236,17 @@ public final class Node implements Serializable {
         return texture2;
     }
 
+    public Node setTexture2(Texture texture2) {
+        setState(this.texture2 = texture2, texture2Linear, textureClampToEdge);
+        return this;
+    }
+
     public boolean isTexture2Linear() {
         return texture2Linear;
     }
 
     public Node setTexture2Linear(boolean linear) {
-        texture2Linear = linear;
+        setState(texture2, texture2Linear = linear, texture2ClampToEdge);
         return this;
     }
 
@@ -283,12 +255,7 @@ public final class Node implements Serializable {
     }
 
     public Node setClampTexture2ToEdge(boolean clamp) {
-        texture2ClampToEdge = clamp;
-        return this;
-    }
-
-    public Node setTexture2(Texture texture2) {
-        this.texture2 = texture2;
+        setState(texture2, texture2Linear, texture2ClampToEdge = clamp);
         return this;
     }
 
@@ -627,135 +594,81 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public void addBox(int sx, int sy, int sz) {
-        sx /= 2;
-        sy /= 2;
-        sz /= 2;
-        
-        push(-sx, -sy, -sz, 0, 0, 0, 0, +0, +0, -1, 1, 1, 1, 1);
-        push(-sx, +sy, -sz, 0, 0, 0, 0, +0, +0, -1, 1, 1, 1, 1);
-        push(+sx, +sy, -sz, 0, 0, 0, 0, +0, +0, -1, 1, 1, 1, 1);
-        push(+sx, -sy, -sz, 0, 0, 0, 0, +0, +0, -1, 1, 1, 1, 1);
-        push(0, 1, 2, 3);
-
-        push(-sx, -sy, +sz, 0, 0, 0, 0, +0, +0, +1, 1, 1, 1, 1);
-        push(-sx, +sy, +sz, 0, 0, 0, 0, +0, +0, +1, 1, 1, 1, 1);
-        push(+sx, +sy, +sz, 0, 0, 0, 0, +0, +0, +1, 1, 1, 1, 1);
-        push(+sx, -sy, +sz, 0, 0, 0, 0, +0, +0, +1, 1, 1, 1, 1);
-        push(7, 6, 5, 4);
-
-        push(-sx, -sy, -sz, 0, 0, 0, 0, -1, +0, +0, 1, 1, 1, 1);
-        push(-sx, -sy, +sz, 0, 0, 0, 0, -1, +0, +0, 1, 1, 1, 1);
-        push(-sx, +sy, +sz, 0, 0, 0, 0, -1, +0, +0, 1, 1, 1, 1);
-        push(-sx, +sy, -sz, 0, 0, 0, 0, -1, +0, +0, 1, 1, 1, 1);
-        push(8, 9, 10, 11);
-
-        push(+sx, -sy, -sz, 0, 0, 0, 0, +1, +0, +0, 1, 1, 1, 1);
-        push(+sx, -sy, +sz, 0, 0, 0, 0, +1, +0, +0, 1, 1, 1, 1);
-        push(+sx, +sy, +sz, 0, 0, 0, 0, +1, +0, +0, 1, 1, 1, 1);
-        push(+sx, +sy, -sz, 0, 0, 0, 0, +1, +0, +0, 1, 1, 1, 1);
-        push(15, 14, 13, 12);
-
-        push(-sx, -sy, -sz, 0, 0, 0, 0, +0, -1, +0, 1, 1, 1, 1);
-        push(+sx, -sy, -sz, 0, 0, 0, 0, +0, -1, +0, 1, 1, 1, 1);
-        push(+sx, -sy, +sz, 0, 0, 0, 0, +0, -1, +0, 1, 1, 1, 1);
-        push(-sx, -sy, +sz, 0, 0, 0, 0, +0, -1, +0, 1, 1, 1, 1);
-        push(16, 17, 18, 19);
-
-        push(-sx, +sy, -sz, 0, 0, 0, 0, +0, +1, +0, 1, 1, 1, 1);
-        push(+sx, +sy, -sz, 0, 0, 0, 0, +0, +1, +0, 1, 1, 1, 1);
-        push(+sx, +sy, +sz, 0, 0, 0, 0, +0, +1, +0, 1, 1, 1, 1);
-        push(-sx, +sy, +sz, 0, 0, 0, 0, +0, +1, +0, 1, 1, 1, 1);
-        push(23, 22, 21, 20);
+    public boolean isWarpAllocated() {
+        return warpVertices != null;
     }
 
-    public Node calcTextureCoordinates(float x, float y, float z, float units) {
-        for(int i = 0; i != getVertexCount(); i++) {
-            float nx = getVertexComponent(i, 7);
-            float ny = getVertexComponent(i, 8);
-            float nz = getVertexComponent(i, 9);
-            float px = getVertexComponent(i, 0) + x;
-            float py = getVertexComponent(i, 1) + y;
-            float pz = getVertexComponent(i, 2) + z;
+    public float getWarpAmplitudeX() {
+        return warpAmplitudeX;
+    }
 
-            nx = Math.abs(nx);
-            ny = Math.abs(ny);
-            nz = Math.abs(nz);
-
-            if(nx >= ny && nx >= nz) {
-                setVertexComponent(i, 3, pz / units);
-                setVertexComponent(i, 4, py / units);
-            } else if(ny >= nx && ny >= nz) {
-                setVertexComponent(i, 3, px / units);
-                setVertexComponent(i, 4, pz / units);
-            } else {
-                setVertexComponent(i, 3, px / units);
-                setVertexComponent(i, 4, py / units);
-            }
-        }
+    public Node setWarpAmplitudeX(float amplitude) {
+        warpAmplitudeX = amplitude;
         return this;
     }
 
-    public Node swapWinding() {
-        for(int i = 0; i != getIndexCount(); i += 3) {
-            int temp = indices.get(i + 1);
+    public float getWarpAmplitudeY() {
+        return warpAmplitudeY;
+    }
 
-            indices.set(i + 1, indices.get(i + 2));
-            indices.set(i + 2, temp);
-        }
-        for(int[] face : faces) {
-            int n = face.length / 2;
-
-            for(int i = 0; i != n; i++) {
-                int temp = face[i];
-
-                face[i] = face[face.length - i - 1];
-                face[face.length - i - 1] = temp;
-            }
-        }
-        for(int i = 0; i != vertices.size(); i += Renderer.COMPONENTS) {
-            vertices.set(i + 7, -vertices.get(i + 7));
-            vertices.set(i + 8, -vertices.get(i + 8));
-            vertices.set(i + 9, -vertices.get(i + 9));
-        }
+    public Node setWarpAmplitudeY(float amplitude) {
+        warpAmplitudeY = amplitude;
         return this;
     }
 
-    public Node calcBaseVertices() {
-        baseVertices = new float[getVertexCount() * 3];
+    public float getWarpAmplitudeZ() {
+        return warpAmplitudeZ;
+    }
+
+    public Node setWarpAmplitudeZ(float amplitude) {
+        warpAmplitudeZ = amplitude;
+        return this;
+    }
+
+    public float getWarpSpeed() {
+        return warpSpeed;
+    }
+
+    public Node setWarpSpeed(float speed) {
+        warpSpeed = speed;
+        return this;
+    }
+
+    public Node allocWarp() {
+        warpVertices = new float[getVertexCount() * 3];
 
         for(int i = 0, j = 0; i != getVertexCount(); i++) {
-            baseVertices[j++] = getVertexComponent(i, 0);
-            baseVertices[j++] = getVertexComponent(i, 1);
-            baseVertices[j++] = getVertexComponent(i, 2);
+            warpVertices[j++] = getVertexComponent(i, 0);
+            warpVertices[j++] = getVertexComponent(i, 1);
+            warpVertices[j++] = getVertexComponent(i, 2);
         }
         return this;
     }
 
-    public Node resetBaseVertices() {
-        if(baseVertices != null) {
+    public Node clearWarp() {
+        if(warpVertices != null) {
             for(int i = 0, j = 0; i != getVertexCount(); i++) {
-                setVertexComponent(i, 0, baseVertices[j++]);
-                setVertexComponent(i, 1, baseVertices[j++]);
-                setVertexComponent(i, 2, baseVertices[j++]);
+                setVertexComponent(i, 0, warpVertices[j++]);
+                setVertexComponent(i, 1, warpVertices[j++]);
+                setVertexComponent(i, 2, warpVertices[j++]);
             }
         }
         return this;
     }
 
     public Node warp() {
-        if(baseVertices != null) {
+        if(warpVertices != null) {
             Game game = Game.getInstance();
-            float t = game.getTotalTime();
+            float t = game.getTotalTime() * warpSpeed;
 
             for(int i = 0, j = 0; i != getVertexCount(); i++) {
-                float x = baseVertices[j++];
-                float y = baseVertices[j++];
-                float z = baseVertices[j++];
+                float x = warpVertices[j++];
+                float y = warpVertices[j++];
+                float z = warpVertices[j++];
 
-                setVertexComponent(i, 0, x + (float)(8 * Math.sin(0.05 * z + t) * Math.cos(0.05 * y + t)));
-                setVertexComponent(i, 1, y + (float)(8 * Math.cos(0.05 * x + t) * Math.sin(0.05 * z + t)));
-                setVertexComponent(i, 2, z + (float)(8 * Math.sin(0.05 * x + t) * Math.cos(0.05 * y + t)));
+                setVertexComponent(i, 0, x + (float)(warpAmplitudeX * Math.sin(0.05 * z + t) * Math.cos(0.05 * y + t)));
+                setVertexComponent(i, 1, y + (float)(warpAmplitudeY * Math.cos(0.05 * x + t) * Math.sin(0.05 * z + t)));
+                setVertexComponent(i, 2, z + (float)(warpAmplitudeZ * Math.sin(0.05 * x + t) * Math.cos(0.05 * y + t)));
             }
         }
         return this;
@@ -794,11 +707,17 @@ public final class Node implements Serializable {
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
         out.defaultWriteObject();
 
+        String mc = "@";
         String t1 = "@";
         String t2 = "@";
         String rd = "@";
         KeyFrameMesh mesh = null;
 
+        if(matCap != null) {
+            if(matCap.getFile() != null) {
+                mc = matCap.getFile().getPath();
+            }
+        }
         if(texture != null) {
             if(texture.getFile() != null) {
                 t1 = texture.getFile().getPath();
@@ -817,6 +736,7 @@ public final class Node implements Serializable {
                 }
             }
         }
+        out.writeObject(mc);
         out.writeObject(t1);
         out.writeObject(t2);
         out.writeObject(rd);
@@ -837,6 +757,7 @@ public final class Node implements Serializable {
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
+        String mc = (String)in.readObject();
         String t1 = (String)in.readObject();
         String t2 = (String)in.readObject();
         String rd = (String)in.readObject();
@@ -845,26 +766,23 @@ public final class Node implements Serializable {
         int speed = (Integer)in.readObject();
         boolean looping = (Boolean)in.readObject();
 
+        if(!mc.equals("@")) {
+            try {
+                setMatCap(Game.getInstance().getAssets().load(IO.file(mc)));
+            } catch(Exception ex) {
+                ex.printStackTrace();
+            }
+        }
         if(!t1.equals("@")) {
             try {
-                texture = Game.getInstance().getAssets().load(IO.file(t1));
-                if(isTextureLinear()) {
-                    texture.toLinear(clampTextureToEdge());
-                } else {
-                    texture.toNearest(clampTextureToEdge());
-                }
+                setTexture(Game.getInstance().getAssets().load(IO.file(t1)));
             } catch(Exception ex) {
                 ex.printStackTrace();
             }
         }
         if(!t2.equals("@")) {
             try {
-                texture2 = Game.getInstance().getAssets().load(IO.file(t2));
-                if(isTexture2Linear()) {
-                    texture.toLinear(clampTexture2ToEdge());
-                } else {
-                    texture.toNearest(clampTexture2ToEdge());
-                }
+                setTexture2(Game.getInstance().getAssets().load(IO.file(t2)));
             } catch(Exception ex) {
                 ex.printStackTrace();
             }
@@ -880,6 +798,16 @@ public final class Node implements Serializable {
                 }
             } catch(Exception ex) {
                 ex.printStackTrace();
+            }
+        }
+    }
+
+    private void setState(Texture texture, boolean linear, boolean clampToEdge) {
+        if(texture != null) {
+            if(linear) {
+                texture.toLinear(clampToEdge);
+            } else {
+                texture.toNearest(clampToEdge);
             }
         }
     }

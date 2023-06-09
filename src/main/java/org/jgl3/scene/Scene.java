@@ -29,6 +29,7 @@ public final class Scene implements Serializable {
     private final Vector4f backgroundColor = new Vector4f(0.25f, 0.25f, 0.25f, 1);
     private int snap = 1;
     private final Camera camera = new Camera();
+    private int nodesRendered = 0;
     private int trianglesRendered = 0;
     private int collidableTriangles = 0;
     private boolean drawLights = true;
@@ -37,6 +38,10 @@ public final class Scene implements Serializable {
     private DepthState lastDepthState = null;
     private CullState lastCullState = null;
     private BlendState lastBlendState = null;
+
+    public int getNodesRenderer() {
+        return nodesRendered;
+    }
 
     public int getTrianglesRendered() {
         return trianglesRendered;
@@ -88,7 +93,12 @@ public final class Scene implements Serializable {
     public Scene loadUI() throws Exception {
         Log.put(1, "Loading ui node ...");
         ui = NodeLoader.load(IO.file("assets/ui/ui.obj"));
+        ui = ui.getLastChild().getLastChild();
         return this;
+    }
+
+    public Node getUI() {
+        return ui;
     }
 
     public Scene removeUI() {
@@ -102,6 +112,7 @@ public final class Scene implements Serializable {
 
         camera.calcTransforms(aspectRatio);
 
+        nodesRendered = 0;
         trianglesRendered = 0;
         collidableTriangles = 0;
 
@@ -153,6 +164,7 @@ public final class Scene implements Serializable {
 
         renderer.setProjection(camera.getProjection());
         renderer.setView(camera.getView());
+        renderer.setEye(camera.getEye());
 
         for(int i = 0; i != Renderer.MAX_LIGHTS; i++) {
 
@@ -185,6 +197,8 @@ public final class Scene implements Serializable {
         renderer.setVertexColorEnabled(false);
         renderer.setLightingEnabled(false);
         renderer.setTexture2(null);
+        renderer.setTexture(null);
+        renderer.setMatCap(null);
         renderer.setLayerColor(0, 0, 0, 0);
 
         GFX.setDepthState(lastDepthState = DepthState.READWRITE);
@@ -192,19 +206,27 @@ public final class Scene implements Serializable {
         GFX.setCullState(lastCullState = CullState.BACK);
 
         if(ui != null) {
+            renderer.setMatCap(ui.getMatCap());
+            renderer.setColor(ui.getColor());
             renderer.setTexture(ui.getTexture());
             if(drawLights) {
                 for(Node light : lights) {
+                    ui.getScale().set(1, 1, 1);
                     ui.getPosition().set(light.getAbsolutePosition());
                     ui.calcBoundsAndTransform(camera);
                     renderer.setModel(ui.getModel());
+                    renderer.setModelViewMatrix(ui.getModel(), camera.getView());
                     ui.renderMesh();
                 }
             }
             if(drawAxis) {
+                float s = camera.getOffset().length() / 64;
+
+                ui.getScale().set(s, s, s);
                 ui.getPosition().set(camera.getTarget());
                 ui.calcBoundsAndTransform(camera);
                 renderer.setModel(ui.getModel());
+                renderer.setModelViewMatrix(ui.getModel(), camera.getView());
                 ui.renderMesh();
             }
         }
@@ -219,10 +241,12 @@ public final class Scene implements Serializable {
 
     private void render(Game game, Renderer renderer, Node renderable) throws Exception {
         renderer.setModel(renderable.getModel());
+        renderer.setModelViewMatrix(renderable.getModel(), camera.getView());
         renderer.setLightingEnabled(renderable.isLightingEnabled());
         renderer.setVertexColorEnabled(renderable.isVertexColorEnabled());
         renderer.setTexture(renderable.getTexture());
         renderer.setTexture2(renderable.getTexture2());
+        renderer.setMatCap(renderable.getMatCap());
         renderer.setAmbientColor(renderable.getAmbientColor());
         renderer.setDiffuseColor(renderable.getDiffuseColor());
         renderer.setColor(renderable.getColor());
@@ -256,6 +280,7 @@ public final class Scene implements Serializable {
             renderable.getRenderable().render(this, renderable);
         }
         trianglesRendered += n;
+        nodesRendered++;
     }
 
     @Override

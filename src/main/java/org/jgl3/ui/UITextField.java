@@ -13,13 +13,13 @@ class UITextField extends UIControl {
     private float seconds = 0;
     private boolean drawCursor = false;
 
-    public UITextField(UIManager manager, String title, int cols) {
+    public UITextField(UIManager ui, String title, int cols) {
         super(
-            manager,
-            cols * manager.getFont().getCharWidth() * manager.getFont().getScale() +
-            title.length() * manager.getFont().getCharWidth() * manager.getFont().getScale() +
-            manager.getPadding() * 3,
-            manager.getFont().getCharHeight() * manager.getFont().getScale() + manager.getPadding() * 2
+            ui,
+            cols * ui.getFont().getCharWidth() * ui.getFont().getScale() +
+            title.length() * ui.getFont().getCharWidth() * ui.getFont().getScale() +
+            ui.getPadding() * 3,
+            ui.getFont().getCharHeight() * ui.getFont().getScale() + ui.getPadding() * 2
         );
 
         this.cols = cols;
@@ -44,50 +44,50 @@ class UITextField extends UIControl {
     public void onPushRects() {
         int x = getX();
         int y = getY();
-        int p = getManager().getGame().getScale();
-        int cw = getManager().getFont().getCharWidth() * getManager().getFont().getScale();
-        int ch = getManager().getFont().getCharHeight() * getManager().getFont().getScale();
+        int p = getUI().getGame().getScale();
+        int cw = getUI().getFont().getCharWidth() * getUI().getFont().getScale();
+        int ch = getUI().getFont().getCharHeight() * getUI().getFont().getScale();
 
-        getManager().pushRect(x, y, getWidth(), getHeight(), UIManager.FOREGROUND);
-        getManager().pushRect(x + p, y + p, getWidth() - p * 2, getHeight() - p * 2, UIManager.BACKGROUND);
+        getUI().pushRect(x, y, getWidth(), getHeight(), UIManager.FOREGROUND);
+        getUI().pushRect(x + p, y + p, getWidth() - p * 2, getHeight() - p * 2, UIManager.BACKGROUND);
 
         if(drawCursor) {
-            x += getManager().getPadding() + cursor * cw;
-            y += getManager().getPadding();
-            getManager().pushRect(x, y, cw, ch, UIManager.FOREGROUND);
+            x += getUI().getPadding() + cursor * cw;
+            y += getUI().getPadding();
+            getUI().pushRect(x, y, cw, ch, UIManager.FOREGROUND);
         }
     }
 
     @Override
     public void onPushText() {
-        int p = getManager().getPadding();
+        int p = getUI().getPadding();
         int x = getX() + p;
         int y = getY() + p;
-        int cw = getManager().getFont().getCharWidth() * getManager().getFont().getScale();
+        int cw = getUI().getFont().getCharWidth() * getUI().getFont().getScale();
         String t = text.substring(start, Math.min(text.length(), start + cols));
 
-        getManager().pushText(title, x + cw * cols + p, y, UIManager.SELECTED);
-        getManager().pushText(t, x, y, UIManager.FOREGROUND);
+        getUI().pushText(title, x + cw * cols + p, y, UIManager.SELECTED);
+        getUI().pushText(t, x, y, UIManager.FOREGROUND);
         if(drawCursor) {
             int i = start + cursor;
             if(i < text.length()) {
                 x += cursor * cw;
-                getManager().pushText("" + text.charAt(i), x, y, UIManager.BACKGROUND);
+                getUI().pushText("" + text.charAt(i), x, y, UIManager.BACKGROUND);
             }
         }
     }
 
     @Override
     public void onMouseButtonDown(int x, int y) {
-        int cw = getManager().getFont().getCharWidth() * getManager().getFont().getScale();
-        int ch = getManager().getFont().getCharHeight() * getManager().getFont().getScale();
-        int x1 = getX() + getManager().getPadding();
-        int y1 = getY() + getManager().getPadding();
+        int cw = getUI().getFont().getCharWidth() * getUI().getFont().getScale();
+        int ch = getUI().getFont().getCharHeight() * getUI().getFont().getScale();
+        int x1 = getX() + getUI().getPadding();
+        int y1 = getY() + getUI().getPadding();
         int x2 = x1 + cw * cols;
         int y2 = y1 + ch;
 
         if(x >= x1 && x <= x2 && y >= y1 && y <= y2) {
-            int i = start + (x - getX() - getManager().getPadding()) / cw;
+            int i = start + (x - getX() - getUI().getPadding()) / cw;
             if(i < 0) {
                 i = 0;
             } else if(i > text.length()) {
@@ -164,7 +164,7 @@ class UITextField extends UIControl {
 
     @Override
     public void onUpdate() {
-        seconds += getManager().getGame().getElapsedTime();
+        seconds += getUI().getGame().getElapsedTime();
         if(seconds >= 1) {
             drawCursor = !drawCursor;
             seconds = 0;
