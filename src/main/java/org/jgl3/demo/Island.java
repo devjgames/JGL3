@@ -18,11 +18,11 @@ public class Island extends Demo {
         scene = Scene.load(IO.file("assets/scenes/island.scn"));
         scene.getRoot().traverse((n) -> {
             if(n.getName().startsWith("water")) {
-                n.getLastChild().allocWarp();
+                n.getLastChild().setWarpEnabled(true);
                 n.getLastChild().setWarpSpeed(4);
-                n.getLastChild().setWarpAmplitudeX(4);
-                n.getLastChild().setWarpAmplitudeZ(4);
-                n.getLastChild().setWarpAmplitudeY(4);
+                n.getLastChild().setWarpAmplitudeX(0);
+                n.getLastChild().setWarpAmplitudeY(8);
+                n.getLastChild().setWarpAmplitudeZ(0);
             }
             return true;
         });
@@ -49,11 +49,6 @@ public class Island extends Demo {
             );
         renderer.endTriangles();
         renderer.end();
-
-        scene.getRoot().traverse((n) -> {
-            n.warp();
-            return true;
-        });
 
         return !game.isKeyDown(GLFW.GLFW_KEY_ESCAPE);
     }

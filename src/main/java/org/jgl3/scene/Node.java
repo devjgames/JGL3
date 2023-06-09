@@ -63,14 +63,15 @@ public final class Node implements Serializable {
     private final Vector<Float> vertices = new Vector<>();
     private final Vector<Integer> indices = new Vector<>();
     private final Vector<int[]> faces = new Vector<>();
+    private transient float[] vertexArray = null;
     private transient OctTree octTree = null;
     private int minTrisPerTree = 16;
     private final BoundingBox meshBounds = new BoundingBox();
-    private transient float[] warpVertices = null;
     private float warpAmplitudeX = 8;
     private float warpAmplitudeY = 8;
     private float warpAmplitudeZ = 8;
     private float warpSpeed = 1;
+    private boolean warpEnabled = false;
     private boolean textureLinear = false;
     private boolean textureClampToEdge = false;
     private boolean texture2Linear = true;
@@ -594,8 +595,13 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public boolean isWarpAllocated() {
-        return warpVertices != null;
+    public boolean isWarpEnabled() {
+        return warpEnabled;
+    }
+
+    public Node setWarpEnabled(boolean enabled) {
+        warpEnabled = enabled;
+        return this;
     }
 
     public float getWarpAmplitudeX() {
@@ -634,72 +640,56 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public Node allocWarp() {
-        warpVertices = new float[getVertexCount() * 3];
+    public void compileMesh() {
+        if(hasMesh()) {
+            int v = 0;
 
-        for(int i = 0, j = 0; i != getVertexCount(); i++) {
-            warpVertices[j++] = getVertexComponent(i, 0);
-            warpVertices[j++] = getVertexComponent(i, 1);
-            warpVertices[j++] = getVertexComponent(i, 2);
-        }
-        return this;
-    }
+            vertexArray = new float[indices.size() * Renderer.COMPONENTS];
 
-    public Node clearWarp() {
-        if(warpVertices != null) {
-            for(int i = 0, j = 0; i != getVertexCount(); i++) {
-                setVertexComponent(i, 0, warpVertices[j++]);
-                setVertexComponent(i, 1, warpVertices[j++]);
-                setVertexComponent(i, 2, warpVertices[j++]);
+            for(int i : indices) {
+                int j = i * Renderer.COMPONENTS;
+
+                for(int k = 0;  k != Renderer.COMPONENTS; k++, j++, v++) {
+                    vertexArray[v] = vertices.get(j);
+                }
             }
         }
-        return this;
     }
 
-    public Node warp() {
-        if(warpVertices != null) {
-            Game game = Game.getInstance();
-            float t = game.getTotalTime() * warpSpeed;
-
-            for(int i = 0, j = 0; i != getVertexCount(); i++) {
-                float x = warpVertices[j++];
-                float y = warpVertices[j++];
-                float z = warpVertices[j++];
-
-                setVertexComponent(i, 0, x + (float)(warpAmplitudeX * Math.sin(0.05 * z + t) * Math.cos(0.05 * y + t)));
-                setVertexComponent(i, 1, y + (float)(warpAmplitudeY * Math.cos(0.05 * x + t) * Math.sin(0.05 * z + t)));
-                setVertexComponent(i, 2, z + (float)(warpAmplitudeZ * Math.sin(0.05 * x + t) * Math.cos(0.05 * y + t)));
-            }
-        }
-        return this;
+    public void clearCompiledMesh() {
+        vertexArray = null;
     }
 
     public Node renderMesh() throws Exception {
         if(hasMesh()) {
             Renderer renderer = Game.getInstance().getRenderer();
 
-            renderer.beginTriangles();
-            for(int i = 0; i != indices.size(); i++) {
-                int j = indices.get(i) * Renderer.COMPONENTS;
-                
-                renderer.push(
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++),
-                    vertices.get(j++)
-                );
+            if(vertexArray != null) {
+                renderer.render(vertexArray);
+            } else {
+                renderer.beginTriangles();
+                for(int i : indices) {
+                    int j = i * Renderer.COMPONENTS;
+
+                    renderer.push(
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++)
+                    );
+                }
+                renderer.endTriangles();
             }
-            renderer.endTriangles();
         }
         return this;
     }
@@ -800,6 +790,7 @@ public final class Node implements Serializable {
                 ex.printStackTrace();
             }
         }
+        compileMesh();
     }
 
     private void setState(Texture texture, boolean linear, boolean clampToEdge) {

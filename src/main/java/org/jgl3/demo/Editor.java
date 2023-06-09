@@ -7,6 +7,7 @@ import org.jgl3.BlendState;
 import org.jgl3.BoundingBox;
 import org.jgl3.CullState;
 import org.jgl3.DepthState;
+import org.jgl3.Font;
 import org.jgl3.GFX;
 import org.jgl3.Game;
 import org.jgl3.IO;
@@ -119,6 +120,9 @@ public class Editor extends Demo {
         Game game = Game.getInstance();
         Renderer renderer = game.getRenderer();
         UIManager ui = game.getUI();
+        Font font = ui.getFont();
+        int s = game.getScale();
+        int h = game.getHeight();
         boolean quit = false;
         Object result;
 
@@ -128,6 +132,11 @@ public class Editor extends Demo {
         } else {
             renderer.begin();
         }
+        renderer.initSprites();
+        renderer.setFont(font);
+        renderer.beginTriangles();
+        renderer.push("FPS = " + game.getFrameRate(), 5 * s, h - font.getCharHeight() * font.getScale() -  5 * s, 0, 1, 1, 1, 1);
+        renderer.endTriangles();
         ui.begin();
         if(ui.button("Editor.quit.button", 0, "Quit", false)) {
             quit = true;
@@ -308,7 +317,7 @@ public class Editor extends Demo {
             if(resetNodeEditor) {
                 Texture matCap = selection.getMatCap();
                 
-                selMatCap = -1;
+                selMatCap = 0;
                 if(matCap != null) {
                     if(matCap.getFile() != null) {
                         selMatCap = matCapNames.indexOf(IO.fileNameWithOutExtension(matCap.getFile()));
@@ -443,7 +452,6 @@ public class Editor extends Demo {
                     } else if(mode == SEL) {
                         if(!down) {
                             int w = game.getWidth();
-                            int h = game.getHeight();
                             int x = game.getMouseX();
                             int y = h - game.getMouseY() - 1;
 
@@ -471,7 +479,8 @@ public class Editor extends Demo {
                                 if(n.isLight()) {
                                     Node uiNode = scene.getUI();
 
-                                    uiNode.getPosition().set(n.getPosition());
+                                    uiNode.getPosition().set(n.getAbsolutePosition());
+                                    uiNode.getScale().set(2, 2, 2);
                                     uiNode.calcBoundsAndTransform(scene.getCamera());
                                     if(bounds.touches(uiNode.getBounds())) {
                                         for(int i = 0; i != uiNode.getTriangleCount(); i++) {

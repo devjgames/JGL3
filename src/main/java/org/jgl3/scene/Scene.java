@@ -164,7 +164,6 @@ public final class Scene implements Serializable {
 
         renderer.setProjection(camera.getProjection());
         renderer.setView(camera.getView());
-        renderer.setEye(camera.getEye());
 
         for(int i = 0; i != Renderer.MAX_LIGHTS; i++) {
 
@@ -200,6 +199,7 @@ public final class Scene implements Serializable {
         renderer.setTexture(null);
         renderer.setMatCap(null);
         renderer.setLayerColor(0, 0, 0, 0);
+        renderer.setWarp(false);
 
         GFX.setDepthState(lastDepthState = DepthState.READWRITE);
         GFX.setBlendState(lastBlendState = BlendState.OPAQUE);
@@ -211,7 +211,7 @@ public final class Scene implements Serializable {
             renderer.setTexture(ui.getTexture());
             if(drawLights) {
                 for(Node light : lights) {
-                    ui.getScale().set(1, 1, 1);
+                    ui.getScale().set(2, 2, 2);
                     ui.getPosition().set(light.getAbsolutePosition());
                     ui.calcBoundsAndTransform(camera);
                     renderer.setModel(ui.getModel());
@@ -251,6 +251,9 @@ public final class Scene implements Serializable {
         renderer.setDiffuseColor(renderable.getDiffuseColor());
         renderer.setColor(renderable.getColor());
         renderer.setLayerColor(renderable.getLayerColor());
+        renderer.setWarp(renderable.isWarpEnabled());
+        renderer.setWarpAmplitude(renderable.getWarpAmplitudeX(), renderable.getWarpAmplitudeY(), renderable.getWarpAmplitudeZ());
+        renderer.setWarpTime(game.getTotalTime() * renderable.getWarpSpeed());
 
         if(lastDepthState != renderable.getDepthState()) {
             GFX.setDepthState(lastDepthState = renderable.getDepthState());

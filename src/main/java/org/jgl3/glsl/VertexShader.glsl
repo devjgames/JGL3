@@ -25,6 +25,10 @@ uniform vec4 uAmbientColor;
 uniform vec4 uDiffuseColor;
 uniform vec4 uColor;
 
+uniform vec3 uWarpAmplitude;
+uniform float uWarpTime;
+uniform int uWarp;
+
 uniform mat4 uProjection;
 uniform mat4 uView;
 uniform mat4 uModelViewMatrix;
@@ -33,9 +37,17 @@ uniform mat4 uModel;
 uniform mat4 uModelIT;
 
 void main() {
-    vec4 position = uModel * vec4(vsInPosition, 1.0);
+    vec3 p = vsInPosition;
+
+    if(uWarp != 0) {
+        p.x += uWarpAmplitude.x * sin(0.05 * p.z + uWarpTime) * cos(0.05 * p.y + uWarpTime);
+        p.y += uWarpAmplitude.y * cos(0.05 * p.x + uWarpTime) * sin(0.05 * p.z + uWarpTime);
+        p.z += uWarpAmplitude.z * sin(0.05 * p.x + uWarpTime) * cos(0.05 * p.y + uWarpTime);
+    }
+
+    vec4 position = uModel * vec4(p, 1.0);
     vec4 color = uColor;
-    vec3 e = normalize((uModelViewMatrix * vec4(vsInPosition, 1.0)).xyz);
+    vec3 e = normalize((uModelViewMatrix * vec4(p, 1.0)).xyz);
     vec3 n = normalize((uNormalMatrix * vec4(vsInNormal, 0.0)).xyz);
     vec3 r = reflect(e, n);
     

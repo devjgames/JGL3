@@ -19,7 +19,7 @@ public final class Renderer extends Resource {
     private final int[] uLightRadius = new int[MAX_LIGHTS];
     private final int uLightCount, uLightingEnabled, uVertexColorEnabled;
     private final int uAmbientColor, uDiffuseColor, uColor;
-    private final int uEye;
+    private final int uWarpAmplitude, uWarpTime, uWarp;
     private final int uProjection, uView, uModel, uModelIT;
     private final int uModelViewMatrix, uNormalMatrix;
     private final int uTexture, uTextureEnabled;
@@ -54,7 +54,9 @@ public final class Renderer extends Resource {
         uAmbientColor = pipeline.getUniform("uAmbientColor");
         uDiffuseColor = pipeline.getUniform("uDiffuseColor");
         uColor = pipeline.getUniform("uColor");
-        uEye = pipeline.getUniform("uEye");
+        uWarpAmplitude = pipeline.getUniform("uWarpAmplitude");
+        uWarpTime = pipeline.getUniform("uWarpTime");
+        uWarp = pipeline.getUniform("uWarp");
         uProjection = pipeline.getUniform("uProjection");
         uView = pipeline.getUniform("uView");
         uModel = pipeline.getUniform("uModel");
@@ -80,7 +82,9 @@ public final class Renderer extends Resource {
         setAmbientColor(0, 0, 0, 0);
         setDiffuseColor(1, 1, 1, 1);
         setColor(1, 1, 1, 1);
-        setEye(0, 0, 0);
+        setWarp(false);
+        setWarpAmplitude(0, 0, 0);
+        setWarpTime(0);
         setLayerColor(0, 0, 0, 0);
         setProjection(temp.identity());
         setView(temp);
@@ -150,12 +154,20 @@ public final class Renderer extends Resource {
         pipeline.set(uColor, color);
     }
 
-    public void setEye(float x, float y, float z) {
-        pipeline.set(uEye, x, y, z);
+    public void setWarpAmplitude(float x, float y, float z) {
+        pipeline.set(uWarpAmplitude, x, y, z);
     }
 
-    public void setEye(Vector3f eye) {
-        pipeline.set(uEye, eye);
+    public void setWarpAmplitude(Vector3f amplitude) {
+        pipeline.set(uWarpAmplitude, amplitude);
+    }
+
+    public void setWarpTime(float time) {
+        pipeline.set(uWarpTime, time);
+    }
+
+    public void setWarp(boolean warp) {
+        pipeline.set(uWarp, warp);
     }
 
     public void setLayerColor(float r, float g, float b, float a) {
@@ -228,6 +240,7 @@ public final class Renderer extends Resource {
         setTexture(null);
         setTexture2(null);
         setMatCap(null);
+        setWarp(false);
         font = null;
 
         GFX.setDepthState(DepthState.NONE);
@@ -238,6 +251,21 @@ public final class Renderer extends Resource {
     public void beginTriangles() {
         vBuf.limit(vBuf.capacity());
         vBuf.position(0);
+    }
+
+    public void render(float[] vertices) throws Exception {
+        beginTriangles();
+        if(vertices.length > vBuf.capacity()) {
+            Log.put(1, "Increasing renderer buffer capacity ...");
+
+            FloatBuffer nBuf = BufferUtils.createFloatBuffer(vertices.length);
+
+            vBuf.flip();
+            nBuf.put(vBuf);
+            vBuf = nBuf;
+        }
+        vBuf.put(vertices);
+        endTriangles();
     }
 
     public void push(float x, float y, float z, float s, float t, float u, float v, float nx, float ny, float nz, float r, float g, float b, float a) {

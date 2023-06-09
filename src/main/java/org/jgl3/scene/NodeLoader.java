@@ -124,6 +124,11 @@ public final class NodeLoader {
                 }
             }
             root.setName(IO.fileNameWithOutExtension(file));
+
+            root.traverse((n) -> {
+                n.compileMesh();
+                return true;
+            });
             
             return root;
         }
