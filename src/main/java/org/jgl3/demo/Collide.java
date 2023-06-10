@@ -80,11 +80,6 @@ public class Collide extends Demo {
         renderer.endTriangles();
         renderer.end();
 
-        scene.getRoot().traverse((n) -> { 
-            Editor.fireLight(n);
-            return true;
-        });
-
         if(dead) {
             if(!painSound.isPlaying()) {
                 Vector3f offset = scene.getCamera().getOffset();

@@ -92,7 +92,10 @@ public final class Scene implements Serializable {
 
     public Scene loadUI() throws Exception {
         Log.put(1, "Loading ui node ...");
-        ui = NodeLoader.load(IO.file("assets/ui/ui.obj"), false);
+        ui = new Node();
+        ui.setRenderable(Game.getInstance().getAssets().load(IO.file("assets/ui/ui.obj")));
+        ui.setTexture(Game.getInstance().getAssets().load(IO.file("assets/ui/colors.png")));
+        ui.getTexture().toLinear(true);
         return this;
     }
 
@@ -118,7 +121,7 @@ public final class Scene implements Serializable {
         root.traverse((n) -> {
             if(n.isVisible()) {
                 Renderable renderable = n.getRenderable();
-                if(renderable != null || n.hasMesh()) {
+                if(renderable != null) {
                     if(renderable != null) {
                         renderable.update(this, n);
                     }
@@ -211,22 +214,22 @@ public final class Scene implements Serializable {
             if(drawLights) {
                 for(Node light : lights) {
                     ui.getScale().set(2, 2, 2);
-                    ui.getPosition().set(light.getAbsolutePosition());
+                    ui.getPosition().set(light.getAbsolutePosition()).add(8, 8, -8);
                     ui.calcBoundsAndTransform(camera);
                     renderer.setModel(ui.getModel());
                     renderer.setModelViewMatrix(ui.getModel(), camera.getView());
-                    ui.renderMesh();
+                    ui.getRenderable().render(this, ui);
                 }
             }
             if(drawAxis) {
                 float s = camera.getOffset().length() / 64;
 
                 ui.getScale().set(s, s, s);
-                ui.getPosition().set(camera.getTarget());
+                ui.getPosition().set(camera.getTarget()).add(8, 8, -8);
                 ui.calcBoundsAndTransform(camera);
                 renderer.setModel(ui.getModel());
                 renderer.setModelViewMatrix(ui.getModel(), camera.getView());
-                ui.renderMesh();
+                ui.getRenderable().render(this, ui);
             }
         }
 
@@ -253,6 +256,7 @@ public final class Scene implements Serializable {
         renderer.setWarp(renderable.isWarpEnabled());
         renderer.setWarpAmplitude(renderable.getWarpAmplitude());
         renderer.setWarpTime(game.getTotalTime() * renderable.getWarpSpeed());
+        renderer.setWarpFrequency(renderable.getWarpFrequency());
 
         if(lastDepthState != renderable.getDepthState()) {
             GFX.setDepthState(lastDepthState = renderable.getDepthState());
@@ -264,23 +268,11 @@ public final class Scene implements Serializable {
             GFX.setBlendState(lastBlendState = renderable.getBlendState());
         }
 
-        if(!renderable.isLightingEnabled() && renderable.hasMesh()) {
-            for(int i = 0; i != renderable.getVertexCount(); i++) {
-                for(int j = 10; j != 14; j++) {
-                    renderable.setVertexComponent(i, j, 1);
-                }
-            }
-        }
-
         int n = renderable.getTriangleCount();
         if(renderable.isCollidable()) {
             collidableTriangles += n;
         }
-        if(renderable.hasMesh()) {
-            renderable.renderMesh();
-        } else {
-            renderable.getRenderable().render(this, renderable);
-        }
+        renderable.getRenderable().render(this, renderable);
         trianglesRendered += n;
         nodesRendered++;
     }

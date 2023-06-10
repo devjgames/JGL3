@@ -20,8 +20,6 @@ import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.jgl3.scene.KeyFrameMesh;
 import org.jgl3.scene.Node;
-import org.jgl3.scene.NodeLoader;
-import org.jgl3.scene.ParticleSystem;
 import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
 import org.jgl3.ui.UIManager;
@@ -65,6 +63,7 @@ public class Editor extends Demo {
     private boolean resetSceneEditor = false;
     private File sceneFile = null;
     private Node selection = null;
+    private final Vector<String> extensions = new Vector<>();
     private final Vector<File> renderableFiles = new Vector<>();
     private final Vector<String> renderableNames = new Vector<>();
     private final Vector<String> sceneNames = new Vector<>();
@@ -76,7 +75,6 @@ public class Editor extends Demo {
     private final float[] time = new float[1];
     private final BoundingBox bounds = new BoundingBox();
     private final Triangle triangle = new Triangle();
-    private Vector<String> extensions = new Vector<>();
     private Node clipboard = null;
 
     @Override
@@ -95,7 +93,8 @@ public class Editor extends Demo {
         clipboard = null;
         down = false;
 
-        extensions = NodeLoader.extensions();
+        extensions.clear();
+        extensions.addAll(Game.getInstance().getAssets().getExtensionsForType(1));
 
         matCapNames.clear();
         
@@ -272,50 +271,54 @@ public class Editor extends Demo {
             if((result = ui.list("Editor.renderables.list", 0, renderableNames, 25, 20, selRenderable)) != null) {
                 Node node = new Node();
                 File file = renderableFiles.get((Integer)result);
+                File textureFile = IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png");
 
-                if(IO.extension(file).equals(".obj")) {
-                    node = NodeLoader.load(file, true);
-                    if(node.getChildCount() == 1) {
-                        node.getChild(0).getPosition().set(scene.getCamera().getTarget());
-                    }
+                node.setRenderable(game.getAssets().load(file));
+                node.setRenderable(node.getRenderable().newInstance());
+                if(textureFile.exists()) {
+                    node.setTexture(game.getAssets().load(textureFile));
                 } else {
-                    File textureFile = IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png");
-
-                    node.setRenderable(game.getAssets().load(file));
-                    node.setRenderable(node.getRenderable().newInstance());
+                    textureFile = IO.file(file.getParentFile(), "colors.png");
                     if(textureFile.exists()) {
                         node.setTexture(game.getAssets().load(textureFile));
                     }
-                    if(IO.extension(file).equals(".md2")) {
-                        Node parent = new Node();
-                        KeyFrameMesh mesh = (KeyFrameMesh)node.getRenderable();
-                        File weaponFile = IO.file(mesh.getFile().getParentFile(), IO.fileNameWithOutExtension(mesh.getFile()) + "-weapon.md2");
-                        File weaponTextureFile = IO.file(weaponFile.getParentFile(), IO.fileNameWithOutExtension(weaponFile) + ".png");
-
-                        node.getPosition().y -= mesh.getFrame(0).getBounds().getMin().z;
-                        node.getPosition().y -= 16;
-                        node.getRotation().rotate((float)Math.toRadians(-90), 1, 0, 0);
-                        if(weaponFile.exists()) {
-                            Node weapon = new Node();
-
-                            weapon.setRenderable(game.getAssets().load(weaponFile));
-                            weapon.setRenderable(weapon.getRenderable().newInstance());
-                            if(weaponTextureFile.exists()) {
-                                weapon.setTexture(game.getAssets().load(weaponTextureFile));
-                            }
-                            node.addChild(weapon);
-                        }
-                        parent.addChild(node);
-                        node = parent;
-                    } else if(IO.extension(file).equals(".par")) {
-                        node.setBlendState(BlendState.ADDITIVE);
-                        node.setDepthState(DepthState.READONLY);
-                        node.setVertexColorEnabled(true);
-                        node.setZOrder(100);
-                    }
-                    node.setName(IO.fileNameWithOutExtension(file));
                 }
-                initNode(file, node);
+                if(node.getTexture() != null) {
+                    node.getTexture().toLinear(false);
+                    node.setTextureLinear(true);
+                    node.setClampTextureToEdge(false);
+                }
+                if(IO.extension(file).equals(".md2")) {
+                    Node parent = new Node();
+                    KeyFrameMesh mesh = (KeyFrameMesh)node.getRenderable();
+                    File weaponFile = IO.file(mesh.getFile().getParentFile(), IO.fileNameWithOutExtension(mesh.getFile()) + "-weapon.md2");
+                    File weaponTextureFile = IO.file(weaponFile.getParentFile(), IO.fileNameWithOutExtension(weaponFile) + ".png");
+
+                    node.getPosition().y -= mesh.getFrame(0).getBounds().getMin().z;
+                    node.getPosition().y -= 16;
+                    node.getRotation().rotate((float)Math.toRadians(-90), 1, 0, 0);
+                    if(weaponFile.exists()) {
+                        Node weapon = new Node();
+
+                        weapon.setRenderable(game.getAssets().load(weaponFile));
+                        weapon.setRenderable(weapon.getRenderable().newInstance());
+                        if(weaponTextureFile.exists()) {
+                            weapon.setTexture(game.getAssets().load(weaponTextureFile));
+                            weapon.getTexture().toLinear(false);
+                            weapon.setTextureLinear(true);
+                            weapon.setClampTextureToEdge(false);
+                        }
+                        node.addChild(weapon);
+                    }
+                    parent.addChild(node);
+                    node = parent;
+                } else if(IO.extension(file).equals(".par")) {
+                    node.setBlendState(BlendState.ADDITIVE);
+                    node.setDepthState(DepthState.READONLY);
+                    node.setVertexColorEnabled(true);
+                    node.setZOrder(100);
+                }
+                node.setName(IO.fileNameWithOutExtension(file));
                 selection = node;
                 scene.getRoot().addChild(selection);
                 editor = NODE_EDITOR;
@@ -362,7 +365,7 @@ public class Editor extends Demo {
             ui.textField("Editor.node.editor.position.field", 0, "Position", selection.getPosition(), resetNodeEditor, 20);
             ui.addRow(5);
             ui.textField("Editor.node.editor.scale.field", 0, "Scale", selection.getScale(), resetNodeEditor, 20);
-            if(selection.hasMesh() || renderable != null) {
+            if(renderable != null) {
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.ambient.color.field", 0, "Ambient", selection.getAmbientColor(), resetNodeEditor, 20);
                 ui.addRow(5);
@@ -383,7 +386,7 @@ public class Editor extends Demo {
                 if((result = ui.textField("Editor.node.editor.z.order.field", 0, "Z Order", selection.getZOrder(), resetNodeEditor, 10)) != null) {
                     selection.setZOrder((Integer)result);
                 }
-                if(selection.hasMesh() || renderable != null) {
+                if(renderable != null) {
                     ui.addRow(5);
                     if((result = ui.textField("Editor.node.editor.triangle.tag.field", 0, "Triangle Tag", selection.getTriangleTag(), resetNodeEditor, 10)) != null) {
                         selection.setTriangleTag((Integer)result);
@@ -455,16 +458,20 @@ public class Editor extends Demo {
                     if(ui.button("Editor.mesh.clear.tex.button", 0, "Clear Texture", false)) {
                         selection.setTexture(null);
                     }
-                } else if(selection.hasMesh()) {
-                    if(ui.button("Editor.mesh.warp.enabled.button", 0, "Warp Enabled", selection.isWarpEnabled())) {
-                        selection.setWarpEnabled(!selection.isWarpEnabled());
-                    }
-                    ui.addRow(5);
-                    ui.textField("Editor.mesh.warp.amplitude.field", 0, "Warp amplitude", selection.getWarpAmplitude(), resetNodeEditor, 15);
-                    ui.addRow(5);
-                    if((result = ui.textField("Editor.mesh.warp.speed.field", 0, "Warp Speed", selection.getWarpSpeed(), resetNodeEditor, 15)) != null) {
-                        selection.setWarpSpeed((Float)result);
-                    }
+                } 
+                ui.addRow(5);
+                if(ui.button("Editor.mesh.warp.enabled.button", 0, "Warp Enabled", selection.isWarpEnabled())) {
+                    selection.setWarpEnabled(!selection.isWarpEnabled());
+                }
+                ui.addRow(5);
+                ui.textField("Editor.mesh.warp.amplitude.field", 0, "Warp amplitude", selection.getWarpAmplitude(), resetNodeEditor, 15);
+                ui.addRow(5);
+                if((result = ui.textField("Editor.mesh.warp.speed.field", 0, "Warp Speed", selection.getWarpSpeed(), resetNodeEditor, 15)) != null) {
+                    selection.setWarpSpeed((Float)result);
+                }
+                ui.addRow(5);
+                if((result = ui.textField("Editor.mesh.warp.freq.field", 0, "Warp Frequency", selection.getWarpFrequency(), resetNodeEditor, 15)) != null) {
+                    selection.setWarpFrequency((Float)result);
                 }
             } else if(selection.isLight()) {
                 ui.addRow(5);
@@ -521,7 +528,7 @@ public class Editor extends Demo {
                                 if(n.isLight()) {
                                     Node uiNode = scene.getUI();
 
-                                    uiNode.getPosition().set(n.getAbsolutePosition());
+                                    uiNode.getPosition().set(n.getAbsolutePosition()).add(8, 8, -8);
                                     uiNode.getScale().set(2, 2, 2);
                                     uiNode.calcBoundsAndTransform(scene.getCamera());
                                     if(bounds.touches(uiNode.getBounds())) {
@@ -566,29 +573,8 @@ public class Editor extends Demo {
                     down = false;
                 }
             }
-            scene.getRoot().traverse((n) -> {
-                updateNode(n);
-                return true;
-            });
         }
         return !quit;
-    }
-
-    public void updateNode(Node node) throws Exception {
-        fireLight(node);
-    }
-
-    public static void fireLight(Node node) {
-        Renderable renderable = node.getRenderable();
-
-        if(node.getName().equals("fire-light") && renderable instanceof ParticleSystem) {
-            ParticleSystem particles = (ParticleSystem)renderable;
-
-            particles.getPosition().y = (float)Math.sin(Game.getInstance().getTotalTime() * 2) * 30;
-        }
-    }
-
-    protected void initNode(File file, Node node) throws Exception {
     }
     
     private void popuplateRenderables(File directory) {
@@ -599,7 +585,7 @@ public class Editor extends Demo {
                 if(!file.isDirectory()) {
                     String extension = IO.extension(file);
 
-                    if(extensions.contains(extension) || extension.equals(".md2") || extension.equals(".par")) {
+                    if(extensions.contains(extension)) {
                         renderableFiles.add(file);
                     }
                 }

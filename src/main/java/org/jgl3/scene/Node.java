@@ -12,7 +12,6 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Log;
 import org.jgl3.OctTree;
-import org.jgl3.Renderer;
 import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.joml.Matrix4f;
@@ -26,7 +25,7 @@ public final class Node implements Serializable {
     public static interface Visitor {
         boolean visit(Node node) throws Exception;
     }
-    
+
     private String name = "Node";
     private String tag = "";
     private boolean visible = true;
@@ -60,15 +59,11 @@ public final class Node implements Serializable {
     private Object data = null;
     private Node parent = null;
     private final Vector<Node> children = new Vector<>();
-    private final Vector<Float> vertices = new Vector<>();
-    private final Vector<Integer> indices = new Vector<>();
-    private final Vector<int[]> faces = new Vector<>();
-    private transient float[] vertexArray = null;
     private transient OctTree octTree = null;
     private int minTrisPerTree = 16;
-    private transient BoundingBox meshBounds = null;
     private Vector3f warpAmplitude = new Vector3f(8, 8, 8);
     private float warpSpeed = 1;
+    private float warpFrequency = 0.05f;
     private boolean warpEnabled = false;
     private boolean textureLinear = false;
     private boolean textureClampToEdge = false;
@@ -398,9 +393,7 @@ public final class Node implements Serializable {
         }
         absolutePosition.zero().mulPosition(model);
         bounds.clear();
-        if(hasMesh()) {
-            bounds.set(meshBounds);
-        } else if(renderable != null) {
+        if(renderable != null) {
             bounds.set(renderable.getBounds());
         }
         bounds.transform(model);
@@ -455,38 +448,14 @@ public final class Node implements Serializable {
     public int getTriangleCount() {
         int count = 0;
 
-        if(hasMesh()) {
-            count = getIndexCount() / 3;
-        } else if(renderable != null) {
+        if(renderable != null) {
             count = renderable.getTriangleCount();
         }
         return count;
     }
 
     public Triangle getTriangle(int i, Triangle triangle) {
-        if(hasMesh()) {
-            i *= 3;
-            triangle.getP1().set(
-                getVertexComponent(getIndex(i + 0), 0),
-                getVertexComponent(getIndex(i + 0), 1),
-                getVertexComponent(getIndex(i + 0), 2)
-            );
-            triangle.getP2().set(
-                getVertexComponent(getIndex(i + 1), 0),
-                getVertexComponent(getIndex(i + 1), 1),
-                getVertexComponent(getIndex(i + 1), 2)
-            );
-            triangle.getP3().set(
-                getVertexComponent(getIndex(i + 2), 0),
-                getVertexComponent(getIndex(i + 2), 1),
-                getVertexComponent(getIndex(i + 2), 2)
-            );
-            triangle
-                .calcPlane()
-                .setTag(triangleTag)
-                .transform(model)
-                .setData(this);
-        } else if(renderable != null) {
+        if(renderable != null) {
             renderable
                 .getTriangle(i, triangle)
                 .setTag(triangleTag)
@@ -497,7 +466,7 @@ public final class Node implements Serializable {
     }
 
     public OctTree getOctTree() {
-        if(hasMesh() && collidable && !dynamic && octTree == null) {
+        if(collidable && !dynamic && octTree == null && renderable != null) {
             Vector<Triangle> triangles = new Vector<>();
 
             Log.put(1, "Creating OctTree ...");
@@ -523,89 +492,6 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public boolean hasMesh() {
-        return getVertexCount() != 0 && getIndexCount() != 0;
-    }
-
-    public int getVertexCount() {
-        return vertices.size() / Renderer.COMPONENTS;
-    }
-
-    public float getVertexComponent(int i, int j) {
-        return vertices.get(i * Renderer.COMPONENTS + j);
-    }
-
-    public Node setVertexComponent(int i, int j, float x) {
-        vertices.set(i * Renderer.COMPONENTS + j, x);
-        return this;
-    }
-
-    public void calcMeshBounds() {
-        if(meshBounds == null) {
-            meshBounds = new BoundingBox();
-        }
-        meshBounds.clear();
-        for(int i = 0; i != getVertexCount(); i++) {
-            meshBounds.add(
-                getVertexComponent(i, 0),
-                getVertexComponent(i, 1),
-                getVertexComponent(i, 2)
-            );
-        }
-    }
-
-    public Node push(float x, float y, float z, float s, float t, float u, float v, float nx, float ny, float nz, float r, float g, float b, float a) {
-        vertices.add(x);
-        vertices.add(y);
-        vertices.add(z);
-        vertices.add(s);
-        vertices.add(t);
-        vertices.add(u);
-        vertices.add(v);
-        vertices.add(nx);
-        vertices.add(ny);
-        vertices.add(nz);
-        vertices.add(r);
-        vertices.add(g);
-        vertices.add(b);
-        vertices.add(a);
-
-        return this;
-    }
-
-    public int getIndexCount() {
-        return indices.size();
-    }
-
-    public int getIndex(int i) {
-        return indices.get(i);
-    }
-
-    public int getFaceCount() {
-        return faces.size();
-    }
-
-    public int getFaceVertexCount(int i) {
-        return faces.get(i).length;
-    }
-
-    public int getFaceVertex(int i, int j) {
-        return faces.get(i)[j];
-    }
-
-    public Node push(int ... indices) {
-        int tris = indices.length - 2;
-
-        faces.add(indices.clone());
-
-        for(int i = 0; i != tris; i++) {
-            this.indices.add(indices[0]);
-            this.indices.add(indices[i + 1]);
-            this.indices.add(indices[i + 2]);
-        }
-        return this;
-    }
-
     public boolean isWarpEnabled() {
         return warpEnabled;
     }
@@ -628,57 +514,12 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public void compileMesh() {
-        if(hasMesh()) {
-            int v = 0;
-
-            vertexArray = new float[indices.size() * Renderer.COMPONENTS];
-
-            for(int i : indices) {
-                int j = i * Renderer.COMPONENTS;
-
-                for(int k = 0;  k != Renderer.COMPONENTS; k++, j++, v++) {
-                    vertexArray[v] = vertices.get(j);
-                }
-            }
-        }
+    public float getWarpFrequency() {
+        return warpFrequency;
     }
 
-    public void clearCompiledMesh() {
-        vertexArray = null;
-    }
-
-    public Node renderMesh() throws Exception {
-        if(hasMesh()) {
-            Renderer renderer = Game.getInstance().getRenderer();
-
-            if(vertexArray != null) {
-                renderer.render(vertexArray);
-            } else {
-                renderer.beginTriangles();
-                for(int i : indices) {
-                    int j = i * Renderer.COMPONENTS;
-
-                    renderer.push(
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++),
-                        vertices.get(j++)
-                    );
-                }
-                renderer.endTriangles();
-            }
-        }
+    public Node setWarpFrequency(float frequency) {
+        warpFrequency = frequency;
         return this;
     }
 
@@ -778,8 +619,6 @@ public final class Node implements Serializable {
                 ex.printStackTrace();
             }
         }
-        calcMeshBounds();
-        compileMesh();
     }
 
     private void setState(Texture texture, boolean linear, boolean clampToEdge) {

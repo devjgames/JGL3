@@ -19,7 +19,7 @@ public final class Renderer extends Resource {
     private final int[] uLightRadius = new int[MAX_LIGHTS];
     private final int uLightCount, uLightingEnabled, uVertexColorEnabled;
     private final int uAmbientColor, uDiffuseColor, uColor;
-    private final int uWarpAmplitude, uWarpTime, uWarp;
+    private final int uWarpAmplitude, uWarpTime, uWarp, uWarpFrequency;
     private final int uProjection, uView, uModel, uModelIT;
     private final int uModelViewMatrix, uNormalMatrix;
     private final int uTexture, uTextureEnabled;
@@ -57,6 +57,7 @@ public final class Renderer extends Resource {
         uWarpAmplitude = pipeline.getUniform("uWarpAmplitude");
         uWarpTime = pipeline.getUniform("uWarpTime");
         uWarp = pipeline.getUniform("uWarp");
+        uWarpFrequency = pipeline.getUniform("uWarpFrequency");
         uProjection = pipeline.getUniform("uProjection");
         uView = pipeline.getUniform("uView");
         uModel = pipeline.getUniform("uModel");
@@ -168,6 +169,10 @@ public final class Renderer extends Resource {
 
     public void setWarp(boolean warp) {
         pipeline.set(uWarp, warp);
+    }
+
+    public void setWarpFrequency(float frequency) {
+        pipeline.set(uWarpFrequency, frequency);
     }
 
     public void setLayerColor(float r, float g, float b, float a) {

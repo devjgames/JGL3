@@ -16,7 +16,7 @@ import java.util.Random;
 public final class ParticleSystem implements Renderable {
 
     public static void registerAssetLoader() {
-        Game.getInstance().getAssets().registerAssetLoader(".par", new Loader());
+        Game.getInstance().getAssets().registerAssetLoader(".par", 1, new Loader());
     }
 
     private static class Loader implements AssetLoader {
@@ -29,12 +29,18 @@ public final class ParticleSystem implements Renderable {
                 Integer.parseInt(tokens[0]),
                 Integer.parseInt(tokens[1]),
                 Integer.parseInt(tokens[2]),
-                (ParticleEmitter)Class.forName(tokens[3]).getConstructors()[0].newInstance()
+                Integer.parseInt(tokens[3]),
+                Float.parseFloat(tokens[4]),
+                Float.parseFloat(tokens[5]),
+                (ParticleEmitter)Class.forName(tokens[6]).getConstructors()[0].newInstance()
             );
         }
     }
 
     private final File file;
+    private final int pathAxis;
+    private final float pathAmplitude;
+    private final float pathSpeed;
     private final Vector3f position = new Vector3f();
     private final int maxParticles;
     private final float particlesPerSecond;
@@ -52,8 +58,11 @@ public final class ParticleSystem implements Renderable {
     private final int seed;
     private final Triangle[] triangles;
 
-    public ParticleSystem(File file, float particlesPerSecond, int maxParticles, int seed, ParticleEmitter emitter) throws Exception {
+    public ParticleSystem(File file, float particlesPerSecond, int maxParticles, int seed, int axis, float amplitude, float speed, ParticleEmitter emitter) throws Exception {
         this.file = file;
+        pathAxis = axis;
+        pathAmplitude = amplitude;
+        pathSpeed = speed;
         this.particlesPerSecond = particlesPerSecond;
         this.maxParticles = maxParticles;
         live = new Particle[maxParticles];
@@ -100,6 +109,15 @@ public final class ParticleSystem implements Renderable {
     @Override
     public void update(Scene scene, Node node) throws Exception {
         Game game = Game.getInstance();
+        float pathTime = game.getTotalTime() * pathSpeed;
+
+        if(pathAxis == 0) {
+            position.set(pathAmplitude * (float)Math.sin(pathTime), 0, 0);
+        } else if(pathAxis == 1) {
+            position.set(0, pathAmplitude * (float)Math.sin(pathTime), 0);
+        } else if(pathAxis == 2) {
+            position.set(0, 0, pathAmplitude * (float)Math.sin(pathTime));
+        }
 
         seconds += particlesPerSecond * game.getElapsedTime();
         time = game.getTotalTime();
@@ -345,6 +363,6 @@ public final class ParticleSystem implements Renderable {
 
     @Override
     public Renderable newInstance() throws Exception {
-        return new ParticleSystem(file, particlesPerSecond, maxParticles, seed, emitter);
+        return new ParticleSystem(file, particlesPerSecond, maxParticles, seed, pathAxis, pathAmplitude, pathSpeed, emitter);
     }
 }

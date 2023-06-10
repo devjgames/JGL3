@@ -28,6 +28,7 @@ uniform vec4 uColor;
 uniform vec3 uWarpAmplitude;
 uniform float uWarpTime;
 uniform int uWarp;
+uniform float uWarpFrequency;
 
 uniform mat4 uProjection;
 uniform mat4 uView;
@@ -40,9 +41,11 @@ void main() {
     vec3 p = vsInPosition;
 
     if(uWarp != 0) {
-        p.x += uWarpAmplitude.x * sin(0.05 * p.z + uWarpTime) * cos(0.05 * p.y + uWarpTime);
-        p.y += uWarpAmplitude.y * cos(0.05 * p.x + uWarpTime) * sin(0.05 * p.z + uWarpTime);
-        p.z += uWarpAmplitude.z * sin(0.05 * p.x + uWarpTime) * cos(0.05 * p.y + uWarpTime);
+        float f = uWarpFrequency;
+
+        p.x += uWarpAmplitude.x * sin(f * p.z + uWarpTime) * cos(f * p.y + uWarpTime);
+        p.y += uWarpAmplitude.y * cos(f * p.x + uWarpTime) * sin(f * p.z + uWarpTime);
+        p.z += uWarpAmplitude.z * sin(f * p.x + uWarpTime) * cos(f * p.y + uWarpTime);
     }
 
     vec4 position = uModel * vec4(p, 1.0);
