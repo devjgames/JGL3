@@ -82,7 +82,7 @@ public class App {
     public static void main(String[] args) throws Exception {
         new App(1000, 700, true,
             new Editor(),
-            new Collide(IO.file("assets/scenes/collide.scn"), 800, -64, true)
+            new Collide(IO.file("assets/scenes/collide.scn"), 800, -64, false)
         );
     }
 }

@@ -386,18 +386,16 @@ public class Editor extends Demo {
                 if((result = ui.textField("Editor.node.editor.z.order.field", 0, "Z Order", selection.getZOrder(), resetNodeEditor, 10)) != null) {
                     selection.setZOrder((Integer)result);
                 }
-                if(renderable != null) {
-                    ui.addRow(5);
-                    if((result = ui.textField("Editor.node.editor.triangle.tag.field", 0, "Triangle Tag", selection.getTriangleTag(), resetNodeEditor, 10)) != null) {
-                        selection.setTriangleTag((Integer)result);
-                    }
-                    ui.addRow(5);
-                    if(ui.button("Editor.node.editor.collidable.button", 0, "Collidable", selection.isCollidable())) {
-                        selection.setCollidable(!selection.isCollidable());
-                    }
-                    if(ui.button("Editor.node.editor.dynamic.button", 5, "Dynamic", selection.isDynamic())) {
-                        selection.setDynamic(!selection.isDynamic());
-                    }
+                ui.addRow(5);
+                if((result = ui.textField("Editor.node.editor.triangle.tag.field", 0, "Triangle Tag", selection.getTriangleTag(), resetNodeEditor, 10)) != null) {
+                    selection.setTriangleTag((Integer)result);
+                }
+                ui.addRow(5);
+                if(ui.button("Editor.node.editor.collidable.button", 0, "Collidable", selection.isCollidable())) {
+                    selection.setCollidable(!selection.isCollidable());
+                }
+                if(ui.button("Editor.node.editor.dynamic.button", 5, "Dynamic", selection.isDynamic())) {
+                    selection.setDynamic(!selection.isDynamic());
                 }
                 ui.addRow(5);
                 if(ui.button("Editor.node.editor.lighting.enabled.button", 0, "Lit", selection.isLightingEnabled())) {
@@ -406,6 +404,14 @@ public class Editor extends Demo {
                 if(selection.getTexture() != null) {
                     if(ui.button("Editor.node.editor.textureLinear.button", 5, "Linear", selection.isTextureLinear())) {
                         selection.setTextureLinear(!selection.isTextureLinear());
+                        scene.getRoot().traverse((n) -> {
+                            Texture texture = n.getTexture();
+
+                            if(texture == selection.getTexture() && texture != null) {
+                                n.setTextureLinear(selection.isTextureLinear());
+                            }
+                            return true;
+                        });
                     }
                 }
                 ui.addRow(5);
@@ -425,10 +431,10 @@ public class Editor extends Demo {
                 if(ui.button("Editor.node.editor.cull.enabled.button", 0, "Cull Enabled", selection.getCullState() != CullState.NONE)) {
                     selection.setCullState((selection.getCullState() == CullState.NONE) ? CullState.BACK : CullState.NONE);
                 }
-                ui.addRow(5);
                 if(renderable instanceof KeyFrameMesh) {
                     KeyFrameMesh mesh = (KeyFrameMesh)renderable;
 
+                    ui.addRow(5);
                     if((result = ui.textField("Editor.node.seq.field", 0, "Sequence", "" + mesh.getStart() + " " + mesh.getEnd() + " " + mesh.getSpeed(), resetNodeEditor, 15)) != null) {
                         String[] tokens = ((String)result).split("\\s+");
 
@@ -454,11 +460,11 @@ public class Editor extends Demo {
                             }
                         }
                     }
-                    ui.addRow(5);
-                    if(ui.button("Editor.mesh.clear.tex.button", 0, "Clear Texture", false)) {
-                        selection.setTexture(null);
-                    }
                 } 
+                ui.addRow(5);
+                if(ui.button("Editor.mesh.clear.tex.button", 0, "Clear Texture", false)) {
+                    selection.setTexture(null);
+                }
                 ui.addRow(5);
                 if(ui.button("Editor.mesh.warp.enabled.button", 0, "Warp Enabled", selection.isWarpEnabled())) {
                     selection.setWarpEnabled(!selection.isWarpEnabled());

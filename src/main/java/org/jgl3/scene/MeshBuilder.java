@@ -515,11 +515,11 @@ public class MeshBuilder {
         }
     }
 
-    public final void setQuadTextureCoordinates(int i, int x, int y, int w, int h, int texWidth, int texHeight) {
+    public final void setQuadTextureCoordinates(int i, float x, float y, float w, float h, float texWidth, float texHeight) {
         getEdgeTextureCoordinate(getFaceEdge(i) + 0).set((x + 0) / (float)texWidth, (y + 0) / (float)texHeight);
-        getEdgeTextureCoordinate(getFaceEdge(i) + 0).set((x + w) / (float)texWidth, (y + 0) / (float)texHeight);
-        getEdgeTextureCoordinate(getFaceEdge(i) + 0).set((x + w) / (float)texWidth, (y + h) / (float)texHeight);
-        getEdgeTextureCoordinate(getFaceEdge(i) + 0).set((x + 0) / (float)texWidth, (y + h) / (float)texHeight);
+        getEdgeTextureCoordinate(getFaceEdge(i) + 1).set((x + w) / (float)texWidth, (y + 0) / (float)texHeight);
+        getEdgeTextureCoordinate(getFaceEdge(i) + 2).set((x + w) / (float)texWidth, (y + h) / (float)texHeight);
+        getEdgeTextureCoordinate(getFaceEdge(i) + 3).set((x + 0) / (float)texWidth, (y + h) / (float)texHeight);
     }
 
     public final void addBox(float x, float y, float z, float sx, float sy, float sz, int dx, int dy, int dz, boolean invert) throws Exception {
