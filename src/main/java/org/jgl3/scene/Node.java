@@ -555,6 +555,20 @@ public final class Node implements Serializable {
         out.writeObject(t1);
         out.writeObject(t2);
         out.writeObject(rd);
+
+        if(renderable instanceof KeyFrameMesh) {
+            KeyFrameMesh mesh = (KeyFrameMesh)renderable;
+
+            out.writeObject(mesh.getStart());
+            out.writeObject(mesh.getEnd());
+            out.writeObject(mesh.getSpeed());
+            out.writeObject(mesh.isLooping());
+        } else {
+            out.writeObject(0);
+            out.writeObject(0);
+            out.writeObject(0);
+            out.writeObject(false);
+        }
     }
 
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
@@ -564,6 +578,10 @@ public final class Node implements Serializable {
         String t1 = (String)in.readObject();
         String t2 = (String)in.readObject();
         String rd = (String)in.readObject();
+        int start = (Integer)in.readObject();
+        int end = (Integer)in.readObject();
+        int speed = (Integer)in.readObject();
+        boolean looping = (Boolean)in.readObject();
 
         if(!mc.equals("@")) {
             try {
@@ -590,6 +608,11 @@ public final class Node implements Serializable {
             try {
                 renderable = Game.getInstance().getAssets().load(IO.file(rd));
                 renderable = renderable.newInstance();
+                if(renderable instanceof KeyFrameMesh) {
+                    KeyFrameMesh mesh = (KeyFrameMesh)renderable;
+
+                    mesh.setSequence(start, end, speed, looping);
+                }
             } catch(Exception ex) {
                 ex.printStackTrace();
             }

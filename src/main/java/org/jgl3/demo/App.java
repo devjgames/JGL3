@@ -6,6 +6,7 @@ import org.jgl3.GFX;
 import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Renderer;
+import org.jgl3.scene.KeyFrameMeshLoader;
 import org.jgl3.scene.Mesh;
 import org.jgl3.scene.MeshBuilder;
 import org.jgl3.scene.ParticleSystem;
@@ -75,14 +76,15 @@ public class App {
         ParticleSystem.registerAssetLoader();
         MeshBuilder.registerAssetLoader();
         Mesh.registerAssetLoader();
+        KeyFrameMeshLoader.registerAssetLoader();
     }
 
     public static void main(String[] args) throws Exception {
         new App(1000, 700, true,
             new Editor(),
-            new Collide(IO.file("assets/scenes/scene1.scn"), 0, -64, false),
-            new Collide(IO.file("assets/scenes/scene2.scn"), 0, -64, false),
-            new Collide(IO.file("assets/scenes/scene3.scn"), 0, -64, false)
+            new Collide(IO.file("assets/scenes/scene1.scn"), 600, -64, false),
+            new Collide(IO.file("assets/scenes/scene2.scn"), 600, -64, false),
+            new Collide(IO.file("assets/scenes/scene3.scn"), 600, -64, false)
         );
     }
 }

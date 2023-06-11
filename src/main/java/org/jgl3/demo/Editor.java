@@ -18,6 +18,7 @@ import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.Texture;
 import org.jgl3.Triangle;
+import org.jgl3.scene.KeyFrameMesh;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
@@ -304,7 +305,16 @@ public class Editor extends Demo {
                     node.setTextureLinear(true);
                     node.setClampTextureToEdge(false);
                 }
-                if(IO.extension(file).equals(".par")) {
+                if(IO.extension(file).equals(".md2")) {
+                    Node parent = new Node();
+                    KeyFrameMesh mesh = (KeyFrameMesh)node.getRenderable();
+
+                    node.getPosition().y -= mesh.getFrame(0).getBounds().getMin().z;
+                    node.getPosition().y -= 16;
+                    node.getRotation().rotate((float)Math.toRadians(-90), 1, 0, 0);
+                    parent.addChild(node);
+                    node = parent;
+                } else if(IO.extension(file).equals(".par")) {
                     node.setBlendState(BlendState.ADDITIVE);
                     node.setDepthState(DepthState.READONLY);
                     node.setVertexColorEnabled(true);
@@ -450,6 +460,36 @@ public class Editor extends Demo {
                 if((result = ui.textField("Editor.node.warp.freq.field", 0, "Warp Frequency", selection.getWarpFrequency(), resetNodeEditor, 15)) != null) {
                     selection.setWarpFrequency((Float)result);
                 }
+                if(renderable instanceof KeyFrameMesh) {
+                    KeyFrameMesh mesh = (KeyFrameMesh)renderable;
+
+                    ui.addRow(5);
+                    if((result = ui.textField("Editor.node.seq.field", 0, "Sequence", "" + mesh.getStart() + " " + mesh.getEnd() + " " + mesh.getSpeed(), resetNodeEditor, 15)) != null) {
+                        String[] tokens = ((String)result).split("\\s+");
+
+                        if(tokens.length == 3) {
+                            try {
+                                int start = Integer.parseInt(tokens[0]);
+                                int end = Integer.parseInt(tokens[1]);
+                                int speed = Integer.parseInt(tokens[2]);
+
+                                mesh.setSequence(start, end, speed, true);
+
+                                scene.getRoot().traverse((n) -> {
+                                    Renderable r = n.getRenderable();
+
+                                    if(r instanceof KeyFrameMesh) {
+                                        KeyFrameMesh m = (KeyFrameMesh)r;
+
+                                        m.reset();
+                                    }
+                                    return true;
+                                });
+                            } catch(Exception ex) {
+                            }
+                        }
+                    }
+                } 
             } else if(selection.isLight()) {
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.light.color.field", 0, "Color", selection.getLightColor(), resetNodeEditor, 20);

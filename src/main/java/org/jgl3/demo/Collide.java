@@ -9,6 +9,7 @@ import org.jgl3.Renderer;
 import org.jgl3.Resource;
 import org.jgl3.Sound;
 import org.jgl3.scene.Collider;
+import org.jgl3.scene.KeyFrameMesh;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.Scene;
 import org.joml.Vector3f;
@@ -21,6 +22,7 @@ public class Collide extends Demo {
     private final float minY;
     private Scene scene = null;
     private Node playerNode = null;
+    private KeyFrameMesh mesh = null;
     private final Collider collider = new Collider();
     private Sound jumpSound, painSound;
     private boolean dead;
@@ -42,27 +44,18 @@ public class Collide extends Demo {
     @Override
     public void init() throws Exception {
         Game game = Game.getInstance();
-        Node node = new Node();
 
         scene = Scene.load(file);
         playerNode = scene.getRoot().find("hero", true);
-        playerNode.detachFromParent();
-        playerNode.getRotation().identity();
-        node.addChild(playerNode);
-        node.getPosition().set(playerNode.getPosition());
-        playerNode.getPosition().zero();
-        playerNode = node;
-        scene.getRoot().addChild(playerNode);
+        mesh = (KeyFrameMesh)playerNode.getChild(0).getRenderable();
         start.set(playerNode.getPosition());
         jumpSound = game.getAssets().load(IO.file("assets/sound/jump.wav"));
         jumpSound.setVolume(0.25f);
         painSound = game.getAssets().load(IO.file("assets/sound/pain.wav"));
         painSound.setVolume(0.25f);
 
-        Vector3f offset = scene.getCamera().getOffset();
-
-        offset.x = 0;
-        scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());
+        scene.getCamera().getTarget().zero();
+        scene.getCamera().getTarget().add(0, 300, 300, scene.getCamera().getEye());
         scene.getCamera().getUp().set(0, 1, 0);
 
         dead = false;
@@ -95,12 +88,41 @@ public class Collide extends Demo {
         if(dead) {
             if(!painSound.isPlaying()) {
                 playerNode.getPosition().set(start);
-                playerNode.getChild(0).getRotation().identity();
                 dead = false;
             }
         } else {
-            if(collider.move(scene, playerNode, 100, jump, jumpSound, xMoveOnly)) {
-                playerNode.getChild(0).getRotation().rotate((float)Math.toRadians(-360) * game.getElapsedTime(), 0, 0, 1);
+            boolean moving = collider.move(scene, playerNode, 100, jump, jumpSound, xMoveOnly);
+            boolean isect = false;
+
+            collider.getOrigin().set(playerNode.getPosition());
+            collider.getDirection().set(0, -1, 0);
+            collider.setTime(collider.getRadii().y + 3);
+            isect |= collider.intersect(scene.getRoot()) != null;
+            collider.getOrigin().x += collider.getRadii().x;
+            isect |= collider.intersect(scene.getRoot()) != null;
+            collider.getOrigin().set(playerNode.getPosition());
+            collider.getOrigin().x -= collider.getRadii().x;
+            isect |= collider.intersect(scene.getRoot()) != null;
+            collider.getOrigin().set(playerNode.getPosition());
+            collider.getOrigin().z += collider.getRadii().z;
+            isect |= collider.intersect(scene.getRoot()) != null;
+            collider.getOrigin().set(playerNode.getPosition());
+            collider.getOrigin().z -= collider.getRadii().z;
+            isect |= collider.intersect(scene.getRoot()) != null;
+
+            if(collider.isOnGround() || isect) {
+                boolean set = !mesh.isSequence(66, 69, 7, false);
+                
+                if(!set) {
+                    set = mesh.isDone();
+                }
+                if(moving) {
+                    mesh.setSequence(40, 45, 8, true);
+                } else {
+                   mesh.setSequence(0, 39, 10, true);
+                }
+            } else {
+                mesh.setSequence(66, 69, 7, false);
             }
 
             if(playerNode.getPosition().y < minY) {
@@ -111,6 +133,8 @@ public class Collide extends Demo {
     }
     
     private void kill() {
+        mesh.setSequence(66, 69, 7, false);
+        mesh.reset();
         painSound.play(false);
         dead = true;
     }
