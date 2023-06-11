@@ -9,9 +9,7 @@ import org.jgl3.Renderer;
 import org.jgl3.Resource;
 import org.jgl3.Sound;
 import org.jgl3.scene.Collider;
-import org.jgl3.scene.KeyFrameMesh;
 import org.jgl3.scene.Node;
-import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
@@ -44,14 +42,28 @@ public class Collide extends Demo {
     @Override
     public void init() throws Exception {
         Game game = Game.getInstance();
+        Node node = new Node();
 
         scene = Scene.load(file);
         playerNode = scene.getRoot().find("hero", true);
+        playerNode.detachFromParent();
+        playerNode.getRotation().identity();
+        node.addChild(playerNode);
+        node.getPosition().set(playerNode.getPosition());
+        playerNode.getPosition().zero();
+        playerNode = node;
+        scene.getRoot().addChild(playerNode);
         start.set(playerNode.getPosition());
         jumpSound = game.getAssets().load(IO.file("assets/sound/jump.wav"));
         jumpSound.setVolume(0.25f);
         painSound = game.getAssets().load(IO.file("assets/sound/pain.wav"));
         painSound.setVolume(0.25f);
+
+        Vector3f offset = scene.getCamera().getOffset();
+
+        offset.x = 0;
+        scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());
+        scene.getCamera().getUp().set(0, 1, 0);
 
         dead = false;
     }
@@ -73,8 +85,8 @@ public class Collide extends Demo {
             "NOD = " + scene.getNodesRenderer() + "\n" +
             "TRI = " + scene.getTrianglesRendered() + "\n" +
             "COL = " + scene.getCollidableTriangles() + "\n" +
-            "TST = " + collider.getTested() + "\n" +
-            "ESC = Quit", 
+            "TST = " + collider.getTested() + "\n" + 
+            "ESC = Quit",
             5 * s, 5 * s, 5 * s, 1, 1, 1, 1
             );
         renderer.endTriangles();
@@ -82,15 +94,14 @@ public class Collide extends Demo {
 
         if(dead) {
             if(!painSound.isPlaying()) {
-                Vector3f offset = scene.getCamera().getOffset();
-
-                scene.getCamera().getTarget().set(
-                    playerNode.getPosition().set(start)).add(offset, scene.getCamera().getEye()
-                    );
+                playerNode.getPosition().set(start);
+                playerNode.getChild(0).getRotation().identity();
                 dead = false;
             }
         } else {
-            collider.move(scene, playerNode, 3, 100, jump, jumpSound, xMoveOnly);
+            if(collider.move(scene, playerNode, 100, jump, jumpSound, xMoveOnly)) {
+                playerNode.getChild(0).getRotation().rotate((float)Math.toRadians(-360) * game.getElapsedTime(), 0, 0, 1);
+            }
 
             if(playerNode.getPosition().y < minY) {
                 kill();
@@ -100,16 +111,6 @@ public class Collide extends Demo {
     }
     
     private void kill() {
-        if(playerNode.getChildCount() != 0) {
-            Renderable renderable = playerNode.getChild(0).getRenderable();
-
-            if(renderable instanceof KeyFrameMesh) {
-                KeyFrameMesh mesh = (KeyFrameMesh)renderable;
-
-                mesh.setSequence(66, 71, 7, false);
-                mesh.reset();
-            }
-        }
         painSound.play(false);
         dead = true;
     }

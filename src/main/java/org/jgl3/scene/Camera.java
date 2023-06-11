@@ -3,6 +3,7 @@ package org.jgl3.scene;
 import java.io.Serializable;
 
 import org.jgl3.GFX;
+import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -23,8 +24,10 @@ public final class Camera implements Serializable {
     private final Matrix4f projection = new Matrix4f();
     private final Matrix4f view = new Matrix4f();
     private final Matrix4f matrix = new Matrix4f();
+    private transient FrustumIntersection frustum = new FrustumIntersection();
 
     public Vector3f getEye() {
+        
         return eye;
     }
 
@@ -75,9 +78,17 @@ public final class Camera implements Serializable {
         return view;
     }
 
+    public FrustumIntersection getFrustum() {
+        return frustum;
+    }
+
     public Camera calcTransforms(float aspectRatio) {
         projection.identity().perspective((float)Math.toRadians(fieldOfView), aspectRatio, zNear, zFar);
         view.identity().lookAt(eye, target, up);
+        if(frustum == null) {
+            frustum = new FrustumIntersection();
+        }
+        frustum.set(matrix.set(projection).mul(view));
         return this;
     }
 

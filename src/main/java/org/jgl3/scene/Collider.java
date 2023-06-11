@@ -27,12 +27,13 @@ public final class Collider {
     private final Vector3f r = new Vector3f();
     private final Vector3f u = new Vector3f();
     private final Vector3f f = new Vector3f();
-    private final Vector3f offset = new Vector3f();
     private final float[] time = new float[1];
     private final Matrix4f groundMatrix = new Matrix4f();
-    private float radius = 16;
+    private final Matrix4f toUnitMatrix = new Matrix4f();
+    private final Matrix4f inverseToUnitMatrix = new Matrix4f();
+    private final Vector3f radii = new Vector3f(8, 16, 8);
     private float gravity = 2000;
-    private float groundSlope = 60;
+    private float groundSlope = 45;
     private float roofSlope = 45;
     private float intersectionBuffer = 0;
     private int intersectionBits = 0xFF;
@@ -43,6 +44,7 @@ public final class Collider {
     private final BoundingBox bounds = new BoundingBox();
     private Triangle hit = null;
     private final Triangle triangle2 = new Triangle();
+    private final Triangle tTriangle = new Triangle();
     private int loopCount = 3;
     private int tested = 0;
 
@@ -71,12 +73,8 @@ public final class Collider {
         return this;
     }
 
-    public float getRadius() {
-        return radius;
-    }
-
-    public void setRadius(float radius) {
-        this.radius = radius;
+    public Vector3f getRadii() {
+        return radii;
     }
 
     public float getGravity() {
@@ -181,29 +179,17 @@ public final class Collider {
         return hit;
     }
 
-    public boolean move(Scene scene, Node node, float groundBuffer, int speed, int jump, Sound jumpSound, boolean xMoveOnly) throws Exception {
+    public boolean move(Scene scene, Node node, int speed, int jump, Sound jumpSound, boolean xMoveOnly) throws Exception {
         Game game = Game.getInstance();
         boolean moving = true;
-        KeyFrameMesh mesh = null;
-        KeyFrameMesh weaponMesh = null;
 
         setIntersectionBuffer(1);
-
-        if(node.getChildCount() != 0) {
-            if(node.getChild(0).getRenderable() instanceof KeyFrameMesh) {
-                mesh = (KeyFrameMesh)node.getChild(0).getRenderable();
-                if(node.getChild(0).getChildCount() != 0) {
-                    weaponMesh = (KeyFrameMesh)node.getChild(0).getChild(0).getRenderable();
-                }
-            }
-        }
 
         if(game.isKeyDown(GLFW.GLFW_KEY_SPACE) && isOnGround() && jump > 0) {
             jumpSound.play(false);
             getVelocity().y = jump;
         }
 
-        scene.getCamera().getEye().sub(scene.getCamera().getTarget(), offset);
         getVelocity().mul(0, 1, 0);
         if(xMoveOnly) {
             if(game.isKeyDown(GLFW.GLFW_KEY_RIGHT)) {
@@ -239,47 +225,11 @@ public final class Collider {
             getVelocity().add(f.add(r));
             if(moving) {
                 f.normalize();
-                float a = (float)Math.acos(Math.max(-0.99f, Math.min(0.99f, f.x)));
+                float a = (float)Math.acos(Math.max(-0.999f, Math.min(0.999f, f.x)));
                 if(f.z > 0) {
                     a = (float)Math.PI * 2 - a;
                 }
                 node.getRotation().identity().rotate(a, 0, 1, 0);
-            }
-        }
-        if(mesh != null) {
-            boolean isect = false;
-            getOrigin().set(scene.getCamera().getTarget());
-            getDirection().set(0, -1, 0);
-            setTime(getRadius() + groundBuffer);
-            isect |= intersect(scene.getRoot()) != null;
-            getOrigin().x += getRadius();
-            isect |= intersect(scene.getRoot()) != null;
-            getOrigin().set(scene.getCamera().getTarget());
-            getOrigin().x -= getRadius();
-            isect |= intersect(scene.getRoot()) != null;
-            getOrigin().set(scene.getCamera().getTarget());
-            getOrigin().z += getRadius();
-            isect |= intersect(scene.getRoot()) != null;
-            getOrigin().set(scene.getCamera().getTarget());
-            getOrigin().z -= getRadius();
-            isect |= intersect(scene.getRoot()) != null;
-            if(isOnGround() || isect || jump <= 0) {
-                if(moving) {
-                    mesh.setSequence(40, 45, 8, true);
-                    if(weaponMesh != null) {
-                        weaponMesh.setSequence(40, 45, 8, true);
-                    }
-                } else {
-                   mesh.setSequence(0, 39, 10, true);
-                   if(weaponMesh != null) {
-                    weaponMesh.setSequence(0, 39, 10, true);
-                   }
-                }
-            } else {
-                mesh.setSequence(66, 71, 7, false);
-                if(weaponMesh != null) {
-                    weaponMesh.setSequence(66, 71, 7, false);
-                }
             }
         }
         getPosition().set(node.getPosition());
@@ -288,8 +238,6 @@ public final class Collider {
             getPosition().mul(1, 1, 0);
         }
         node.getPosition().set(getPosition());
-        scene.getCamera().getTarget().set(getPosition());
-        scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());
 
         return moving;
     }
@@ -303,8 +251,15 @@ public final class Collider {
         if(delta.length() < 0.0000001) {
             return this;
         }
-        if(delta.length() > radius * 0.5f) {
-            delta.normalize().mul(radius * 0.5f);
+
+        toUnitMatrix.identity().scale(1 / radii.x, 1 / radii.y, 1  / radii.z);
+        toUnitMatrix.invert(inverseToUnitMatrix);
+
+        delta.mulDirection(toUnitMatrix);
+        position.mulPosition(toUnitMatrix);
+
+        if(delta.length() > 0.5f) {
+            delta.normalize().mul(0.5f);
         }
         position.add(delta);
         onGround = false;
@@ -315,9 +270,10 @@ public final class Collider {
         tested = 0;
 
         for(int i = 0; i < loopCount; i++) {
-            bounds.getMin().set(position).sub(radius, radius, radius);
-            bounds.getMax().set(position).add(radius, radius, radius);
-            time[0] = radius;
+            bounds.getMin().set(position).sub(1, 1, 1);
+            bounds.getMax().set(position).add(1, 1, 1);
+            bounds.transform(inverseToUnitMatrix);
+            time[0] = 1;
             hit = null;
             node.traverse((n) -> {
                 if(n.isCollidable() && bounds.touches(n.getBounds())) {
@@ -336,6 +292,7 @@ public final class Collider {
                 return true;
             });
             if(hit != null) {
+                normal.mulDirection(inverseToUnitMatrix).normalize();
                 if((float)Math.toDegrees(Math.acos(Math.max(-0.99f, Math.min(0.99f, normal.dot(0, 1, 0))))) < groundSlope) {
                     onGround = true;
                     groundNormal.add(normal);
@@ -366,6 +323,8 @@ public final class Collider {
             }
             velocity.y = 0;
         }
+        position.mulPosition(inverseToUnitMatrix);
+
         return this;
     }
 
@@ -380,12 +339,15 @@ public final class Collider {
     private void collide(Triangle triangle) {
         float t = time[0];
 
+        tTriangle.set(triangle).transform(toUnitMatrix);
+        triangle = tTriangle;
+
         triangle.getNormal().negate(direction);
         if(triangle.intersectsPlane(position, direction, time)) {
             point.set(direction).mul(time[0]).add(position);
             if(triangle.contains(point, 0)) {
                 normal.set(triangle.getNormal());
-                resolvedPosition.set(point).add(direction.set(triangle.getNormal()).mul(radius));
+                resolvedPosition.set(point).add(direction.set(triangle.getNormal()));
                 hit = triangle2.set(triangle);
             } else {
                 time[0] = t;
@@ -394,7 +356,7 @@ public final class Collider {
                 if(direction.length() > 0.0000001 && direction.length() < time[0]) {
                     time[0] = direction.length();
                     direction.normalize(normal);
-                    resolvedPosition.set(point).add(direction.normalize(radius));
+                    resolvedPosition.set(point).add(direction.normalize());
                     hit = triangle2.set(triangle);
                 }
             }

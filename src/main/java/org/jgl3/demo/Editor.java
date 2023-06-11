@@ -18,7 +18,6 @@ import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.Texture;
 import org.jgl3.Triangle;
-import org.jgl3.scene.KeyFrameMesh;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
@@ -41,6 +40,7 @@ public class Editor extends Demo {
     private static final int SCENE_EDITOR = 2;
     private static final int NODE_EDITOR = 3;
     private static final int RENDERABLES = 4;
+    private static final int TEXTURE = 5;
 
     private Scene scene = null;
     private int mode = 0;
@@ -57,6 +57,7 @@ public class Editor extends Demo {
     private int selScene = -1;
     private int selRenderable = -1;
     private int selMatCap = -1;
+    private int selTexture = -1;
     private int editor = -1;
     private String sceneName = "";
     private boolean resetNodeEditor = false;
@@ -68,6 +69,8 @@ public class Editor extends Demo {
     private final Vector<String> renderableNames = new Vector<>();
     private final Vector<String> sceneNames = new Vector<>();
     private final Vector<String> matCapNames = new Vector<>();
+    private final Vector<String> textureNames = new Vector<>();
+    private final Vector<File> textureFiles = new Vector<>();
     private boolean down = false;
     private final Vector3f origin = new Vector3f();
     private final Vector3f direction = new Vector3f();
@@ -112,10 +115,16 @@ public class Editor extends Demo {
 
         renderableFiles.clear();
         renderableNames.clear();
-        popuplateRenderables(IO.file("assets"));
+        textureFiles.clear();
+        renderableFiles.clear();
+        popuplateRenderablesAndTextures(IO.file("assets"));
         renderableFiles.sort((a, b) -> a.getName().compareTo(b.getName()));
         for(File file : renderableFiles) {
             renderableNames.add(file.getName());
+        }
+        textureFiles.sort((a, b) -> a.getName().compareTo(b.getName()));
+        for(File file : textureFiles) {
+            textureNames.add(IO.fileNameWithOutExtension(file));
         }
         populateScenes();
     }
@@ -140,7 +149,7 @@ public class Editor extends Demo {
         renderer.initSprites();
         renderer.setFont(font);
         renderer.beginTriangles();
-        renderer.push("FPS = " + game.getFrameRate(), 5 * s, h - font.getCharHeight() * font.getScale() -  5 * s, 0, 1, 1, 1, 1);
+        renderer.push("FPS=" + game.getFrameRate() + ((scene != null) ? ", TRI=" + scene.getTrianglesRendered() : ""), 5 * s, h - font.getCharHeight() * font.getScale() -  5 * s, 0, 1, 1, 1, 1);
         renderer.endTriangles();
         ui.begin();
         if(ui.button("Editor.quit.button", 0, "Quit", false)) {
@@ -267,6 +276,13 @@ public class Editor extends Demo {
                 editor = -1;
             }
             selScene = -2;
+        } else if(editor == TEXTURE) {
+            if((result = ui.list("Editor.textures.list", 0, textureNames, 25, 10, selTexture)) != null) {
+                selection.setTexture(game.getAssets().load(textureFiles.get((Integer)result)));
+                editor = NODE_EDITOR;
+                resetNodeEditor = true;
+            }
+            selTexture = -2;
         } else if(editor == RENDERABLES) {
             if((result = ui.list("Editor.renderables.list", 0, renderableNames, 25, 20, selRenderable)) != null) {
                 Node node = new Node();
@@ -288,31 +304,7 @@ public class Editor extends Demo {
                     node.setTextureLinear(true);
                     node.setClampTextureToEdge(false);
                 }
-                if(IO.extension(file).equals(".md2")) {
-                    Node parent = new Node();
-                    KeyFrameMesh mesh = (KeyFrameMesh)node.getRenderable();
-                    File weaponFile = IO.file(mesh.getFile().getParentFile(), IO.fileNameWithOutExtension(mesh.getFile()) + "-weapon.md2");
-                    File weaponTextureFile = IO.file(weaponFile.getParentFile(), IO.fileNameWithOutExtension(weaponFile) + ".png");
-
-                    node.getPosition().y -= mesh.getFrame(0).getBounds().getMin().z;
-                    node.getPosition().y -= 16;
-                    node.getRotation().rotate((float)Math.toRadians(-90), 1, 0, 0);
-                    if(weaponFile.exists()) {
-                        Node weapon = new Node();
-
-                        weapon.setRenderable(game.getAssets().load(weaponFile));
-                        weapon.setRenderable(weapon.getRenderable().newInstance());
-                        if(weaponTextureFile.exists()) {
-                            weapon.setTexture(game.getAssets().load(weaponTextureFile));
-                            weapon.getTexture().toLinear(false);
-                            weapon.setTextureLinear(true);
-                            weapon.setClampTextureToEdge(false);
-                        }
-                        node.addChild(weapon);
-                    }
-                    parent.addChild(node);
-                    node = parent;
-                } else if(IO.extension(file).equals(".par")) {
+                if(IO.extension(file).equals(".par")) {
                     node.setBlendState(BlendState.ADDITIVE);
                     node.setDepthState(DepthState.READONLY);
                     node.setVertexColorEnabled(true);
@@ -431,52 +423,31 @@ public class Editor extends Demo {
                 if(ui.button("Editor.node.editor.cull.enabled.button", 0, "Cull Enabled", selection.getCullState() != CullState.NONE)) {
                     selection.setCullState((selection.getCullState() == CullState.NONE) ? CullState.BACK : CullState.NONE);
                 }
-                if(renderable instanceof KeyFrameMesh) {
-                    KeyFrameMesh mesh = (KeyFrameMesh)renderable;
-
-                    ui.addRow(5);
-                    if((result = ui.textField("Editor.node.seq.field", 0, "Sequence", "" + mesh.getStart() + " " + mesh.getEnd() + " " + mesh.getSpeed(), resetNodeEditor, 15)) != null) {
-                        String[] tokens = ((String)result).split("\\s+");
-
-                        if(tokens.length == 3) {
-                            try {
-                                int start = Integer.parseInt(tokens[0]);
-                                int end = Integer.parseInt(tokens[1]);
-                                int speed = Integer.parseInt(tokens[2]);
-
-                                mesh.setSequence(start, end, speed, true);
-
-                                scene.getRoot().traverse((n) -> {
-                                    Renderable r = n.getRenderable();
-
-                                    if(r instanceof KeyFrameMesh) {
-                                        KeyFrameMesh m = (KeyFrameMesh)r;
-
-                                        m.reset();
-                                    }
-                                    return true;
-                                });
-                            } catch(Exception ex) {
-                            }
-                        }
-                    }
-                } 
                 ui.addRow(5);
-                if(ui.button("Editor.mesh.clear.tex.button", 0, "Clear Texture", false)) {
+                if(ui.button("Editor.node.clear.tex.button", 0, "Clear Texture", false)) {
                     selection.setTexture(null);
                 }
+                if(ui.button("Editor.node.set.tex.button", 5, "Set Texture", false)) {
+                    Texture texture = selection.getTexture();
+
+                    selTexture = -1;
+                    if(texture != null) {
+                        selTexture = textureFiles.indexOf(texture.getFile());
+                    }
+                    editor = TEXTURE;
+                }
                 ui.addRow(5);
-                if(ui.button("Editor.mesh.warp.enabled.button", 0, "Warp Enabled", selection.isWarpEnabled())) {
+                if(ui.button("Editor.node.warp.enabled.button", 0, "Warp Enabled", selection.isWarpEnabled())) {
                     selection.setWarpEnabled(!selection.isWarpEnabled());
                 }
                 ui.addRow(5);
-                ui.textField("Editor.mesh.warp.amplitude.field", 0, "Warp amplitude", selection.getWarpAmplitude(), resetNodeEditor, 15);
+                ui.textField("Editor.node.warp.amplitude.field", 0, "Warp amplitude", selection.getWarpAmplitude(), resetNodeEditor, 15);
                 ui.addRow(5);
-                if((result = ui.textField("Editor.mesh.warp.speed.field", 0, "Warp Speed", selection.getWarpSpeed(), resetNodeEditor, 15)) != null) {
+                if((result = ui.textField("Editor.node.warp.speed.field", 0, "Warp Speed", selection.getWarpSpeed(), resetNodeEditor, 15)) != null) {
                     selection.setWarpSpeed((Float)result);
                 }
                 ui.addRow(5);
-                if((result = ui.textField("Editor.mesh.warp.freq.field", 0, "Warp Frequency", selection.getWarpFrequency(), resetNodeEditor, 15)) != null) {
+                if((result = ui.textField("Editor.node.warp.freq.field", 0, "Warp Frequency", selection.getWarpFrequency(), resetNodeEditor, 15)) != null) {
                     selection.setWarpFrequency((Float)result);
                 }
             } else if(selection.isLight()) {
@@ -534,7 +505,7 @@ public class Editor extends Demo {
                                 if(n.isLight()) {
                                     Node uiNode = scene.getUI();
 
-                                    uiNode.getPosition().set(n.getAbsolutePosition()).add(8, 8, -8);
+                                    uiNode.getPosition().set(n.getAbsolutePosition());
                                     uiNode.getScale().set(2, 2, 2);
                                     uiNode.calcBoundsAndTransform(scene.getCamera());
                                     if(bounds.touches(uiNode.getBounds())) {
@@ -583,7 +554,7 @@ public class Editor extends Demo {
         return !quit;
     }
     
-    private void popuplateRenderables(File directory) {
+    private void popuplateRenderablesAndTextures(File directory) {
         File[] files = directory.listFiles();
 
         if(files != null) {
@@ -593,12 +564,14 @@ public class Editor extends Demo {
 
                     if(extensions.contains(extension)) {
                         renderableFiles.add(file);
+                    } else if(extension.equals(".png")) {
+                        textureFiles.add(file);
                     }
                 }
             }
             for(File file : files) {
                 if(file.isDirectory()) {
-                    popuplateRenderables(file);
+                    popuplateRenderablesAndTextures(file);
                 }
             }
         }

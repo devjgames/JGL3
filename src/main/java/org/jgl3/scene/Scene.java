@@ -121,11 +121,15 @@ public final class Scene implements Serializable {
         root.traverse((n) -> {
             if(n.isVisible()) {
                 Renderable renderable = n.getRenderable();
+
                 if(renderable != null) {
-                    if(renderable != null) {
-                        renderable.update(this, n);
+                    renderable.update(this, n);
+                    if(camera.getFrustum().testAab(n.getBounds().getMin(), n.getBounds().getMax())) {
+                        renderables.add(n);
                     }
-                    renderables.add(n);
+                    if(n.isCollidable()) {
+                        collidableTriangles += renderable.getTriangleCount();
+                    }
                 }
                 if(n.isLight()) {
                     lights.add(n);
@@ -214,7 +218,7 @@ public final class Scene implements Serializable {
             if(drawLights) {
                 for(Node light : lights) {
                     ui.getScale().set(2, 2, 2);
-                    ui.getPosition().set(light.getAbsolutePosition()).add(8, 8, -8);
+                    ui.getPosition().set(light.getAbsolutePosition());
                     ui.calcBoundsAndTransform(camera);
                     renderer.setModel(ui.getModel());
                     renderer.setModelViewMatrix(ui.getModel(), camera.getView());
@@ -225,7 +229,7 @@ public final class Scene implements Serializable {
                 float s = camera.getOffset().length() / 64;
 
                 ui.getScale().set(s, s, s);
-                ui.getPosition().set(camera.getTarget()).add(8, 8, -8);
+                ui.getPosition().set(camera.getTarget());
                 ui.calcBoundsAndTransform(camera);
                 renderer.setModel(ui.getModel());
                 renderer.setModelViewMatrix(ui.getModel(), camera.getView());
@@ -268,12 +272,8 @@ public final class Scene implements Serializable {
             GFX.setBlendState(lastBlendState = renderable.getBlendState());
         }
 
-        int n = renderable.getTriangleCount();
-        if(renderable.isCollidable()) {
-            collidableTriangles += n;
-        }
         renderable.getRenderable().render(this, renderable);
-        trianglesRendered += n;
+        trianglesRendered += renderable.getTriangleCount();
         nodesRendered++;
     }
 

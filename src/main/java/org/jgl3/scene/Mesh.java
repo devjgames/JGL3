@@ -79,24 +79,6 @@ public class Mesh implements Renderable {
                 }
             }
             mesh.calcBounds();
-
-            Vector3f center = mesh.getBounds().getCenter(new Vector3f());
-
-            center.negate();
-            for(int i = 0; i != mesh.getVertexCount(); i++) {
-                float x = mesh.getVertexComponent(i, 0);
-                float y = mesh.getVertexComponent(i, 1);
-                float z = mesh.getVertexComponent(i, 2);
-
-                x += center.x;
-                y += center.y;
-                z += center.z;
-
-                mesh.setVertexComponent(i, 0, x);
-                mesh.setVertexComponent(i, 1, y);
-                mesh.setVertexComponent(i, 2, z);
-            }
-            mesh.calcBounds();
             mesh.compileMesh();
 
             return mesh;

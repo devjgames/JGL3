@@ -16,7 +16,7 @@ import org.joml.Vector3f;
 public class MeshBuilder {
 
     public static interface Generator {
-        public Mesh generate(File file) throws Exception;
+        public Mesh generate(File file, String[] tokens) throws Exception;
     }
 
     public static void registerAssetLoader() {
@@ -27,9 +27,10 @@ public class MeshBuilder {
 
         @Override
         public Object load(File file, AssetManager assets) throws Exception {
-            Generator generator = (Generator)Class.forName(new String(IO.readAllBytes(file)).trim()).getConstructors()[0].newInstance();
+            String[] tokens = new String(IO.readAllBytes(file)).split("\\s+");
+            Generator generator = (Generator)Class.forName(tokens[0]).getConstructors()[0].newInstance();
 
-            return generator.generate(file);
+            return generator.generate(file, tokens);
         }
         
     }
@@ -443,27 +444,31 @@ public class MeshBuilder {
                 Vector3f p = new Vector3f();
                 int degree = 0;
 
-                do {
-                    int e = e1;
-                    Vector3f center = new Vector3f();
-                    int count = 0;
+                if(e1 != -1) {
+                    do {
+                        int e = e1;
+                        Vector3f center = new Vector3f();
+                        int count = 0;
 
-                    do { 
-                        center.add(getVertexPosition(getEdgeVertex(e)));
-                        count++;
-                        e = getEdgeNext(e);
-                    } while(e != e1);
+                        do { 
+                            center.add(getVertexPosition(getEdgeVertex(e)));
+                            count++;
+                            e = getEdgeNext(e);
+                        } while(e != e1);
 
-                    p.add(center.div(count));
+                        p.add(center.div(count));
 
-                    degree++;
+                        degree++;
 
-                    if(getEdgePair(e1) == -1) {
-                        break;
-                    }
-                    e1 = getEdgePair(e1);
-                    e1 = getEdgeNext(e1);
-                } while(e1 != e2);
+                        if(getEdgePair(e1) == -1) {
+                            break;
+                        }
+                        e1 = getEdgePair(e1);
+                        e1 = getEdgeNext(e1);
+                    } while(e1 != e2);
+                } else {
+                    degree = 1;
+                }
 
                 p.div(degree);
                 positions.add(p);
