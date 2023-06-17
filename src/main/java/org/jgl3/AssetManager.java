@@ -12,8 +12,9 @@ public final class AssetManager extends ResourceManager {
     private final Hashtable<Integer, Vector<String>> assetTypes = new Hashtable<>();
 
     public AssetManager() {
-        registerAssetLoader(".png", 0, new Texture.TextureLoader());
-        registerAssetLoader(".jpg", 0, new Texture.TextureLoader());
+        registerAssetLoader(".png", 0, new Texture.Loader());
+        registerAssetLoader(".jpg", 0, new Texture.Loader());
+        registerAssetLoader(".tex", 0, new Texture.Loader());
         registerAssetLoader(".wav", 0, new Sound.SoundLoader());
     }
     

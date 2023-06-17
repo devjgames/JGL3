@@ -5,7 +5,7 @@ import java.io.File;
 import org.jgl3.scene.Mesh;
 import org.jgl3.scene.MeshBuilder;
 
-public class SmoothBox implements MeshBuilder.Generator {
+public class Box implements MeshBuilder.Generator {
 
     @Override
     public Mesh generate(File file, String[] tokens) throws Exception {
@@ -18,11 +18,14 @@ public class SmoothBox implements MeshBuilder.Generator {
         int dz = Integer.parseInt(tokens[6]);
         int d = Integer.parseInt(tokens[7]);
         int s = Integer.parseInt(tokens[8]);
+        boolean invert = Boolean.parseBoolean(tokens[9]);
+        float units = Float.parseFloat(tokens[10]);
 
-        builder.addBox(0, 0, 0, sx, sy, sz, dx, dy, dz, false);
+        builder.addBox(0, 0, 0, sx, sy, sz, dx, dy, dz, invert);
         builder.subdivide(d);
         builder.smooth(s);
         builder.calcNormals(true);
+        builder.calcTextureCoordinates(0, 0, 0, units, 0);
 
         return builder.build(file);
     }

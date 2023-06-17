@@ -493,13 +493,16 @@ public class MeshBuilder {
             float z = Math.abs(n.z);
             Vector3f p = getVertexPosition(getEdgeVertex(i));
             Vector2f t = getEdgeTextureCoordinate(i);
-
+            
             if(x >= y && x >= z) {
-                t.set(p.z, p.y).add(oz, oy).div(units);
+                t.set(p.z + oz, p.y + oy).div(units);
             } else if(y >= x && y >= z) {
-                t.set(p.x, p.z).add(ox, oz).div(units);
+                t.set(p.x + ox, p.z + oz).div(units);
             } else {
-                t.set(p.x, p.y).add(ox, oy).div(units);
+                t.set(p.x + ox, p.y + oy).div(units);
+            }
+            if(units == 2000) {
+                System.out.println(t);
             }
         }
     }

@@ -6,6 +6,7 @@ import org.jgl3.OctTree;
 import org.jgl3.Sound;
 import org.jgl3.Triangle;
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
@@ -27,15 +28,14 @@ public final class Collider {
     private final Vector3f r = new Vector3f();
     private final Vector3f u = new Vector3f();
     private final Vector3f f = new Vector3f();
+    private final Vector3f offset = new Vector3f();
     private final float[] time = new float[1];
     private final Matrix4f groundMatrix = new Matrix4f();
-    private final Matrix4f toUnitMatrix = new Matrix4f();
-    private final Matrix4f inverseToUnitMatrix = new Matrix4f();
-    private final Vector3f radii = new Vector3f(8, 16, 8);
-    private float gravity = 2000;
-    private float groundSlope = 45;
+    private float radius = 16;
+    private float gravity = 1000;
+    private float groundSlope = 60;
     private float roofSlope = 45;
-    private float intersectionBuffer = 0;
+    private float intersectionBuffer = 1;
     private int intersectionBits = 0xFF;
     private boolean onGround = false;
     private boolean hitRoof = false;
@@ -44,7 +44,6 @@ public final class Collider {
     private final BoundingBox bounds = new BoundingBox();
     private Triangle hit = null;
     private final Triangle triangle2 = new Triangle();
-    private final Triangle tTriangle = new Triangle();
     private int loopCount = 3;
     private int tested = 0;
 
@@ -73,8 +72,12 @@ public final class Collider {
         return this;
     }
 
-    public Vector3f getRadii() {
-        return radii;
+    public float getRadius() {
+        return radius;
+    }
+
+    public void setRadius(float radius) {
+        this.radius = radius;
     }
 
     public float getGravity() {
@@ -179,69 +182,102 @@ public final class Collider {
         return hit;
     }
 
-    public boolean move(Scene scene, Node node, int speed, int jump, Sound jumpSound, boolean xMoveOnly) throws Exception {
+    public Collider move(Scene scene, int speed) throws Exception {
         Game game = Game.getInstance();
-        boolean moving = true;
 
-        setIntersectionBuffer(1);
+        scene.getCamera().rotateAroundEye(-game.getDX() * 0.025f, game.getDY() * 0.025f);
+        scene.getCamera().getTarget().sub(scene.getCamera().getEye(), f).mul(1, 0, 1);
+        getVelocity().mul(0, 1, 0);
+        if((game.isButtonDown(0) || game.isButtonDown(1)) && f.length() > 0.0000001) {
+            f.normalize((game.isButtonDown(0)) ? speed : -speed);
+            getVelocity().add(f);
+        }
+        getPosition().set(scene.getCamera().getEye());
+        collide(scene.getRoot());
+        scene.getCamera().getTarget().sub(scene.getCamera().getEye(), f).normalize();
+        scene.getCamera().getEye().set(getPosition());
+        scene.getCamera().getEye().add(f, scene.getCamera().getTarget());
+
+        return this;
+    }
+
+    public boolean move(Scene scene, Node node, float offsetLength, float groundBuffer, int speed, int jump, Sound jumpSound, boolean freeRotate) throws Exception {
+        Game game = Game.getInstance();
+        float dx = game.getMouseX() - game.getWidth() / 2;
+        float dy = game.getMouseY() - game.getHeight() / 2;
+        float dl = Vector2f.length(dx, dy);
+        boolean moving = false;
+        KeyFrameMesh mesh = null;
+
+        if(node.getChildCount() != 0) {
+            if(node.getChild(0).getRenderable() instanceof KeyFrameMesh) {
+                mesh = (KeyFrameMesh)node.getChild(0).getRenderable();
+            }
+        }
+
+        if(game.isButtonDown(1) && freeRotate) {
+            scene.getCamera().rotateAroundTarget(-game.getDX() * 0.025f, game.getDY() * 0.025f);
+        }
 
         if(game.isKeyDown(GLFW.GLFW_KEY_SPACE) && isOnGround() && jump > 0) {
             jumpSound.play(false);
             getVelocity().y = jump;
         }
 
+        scene.getCamera().getEye().sub(scene.getCamera().getTarget(), offset);
+        f.set(offset).mul(-1, 0, -1);
         getVelocity().mul(0, 1, 0);
-        if(xMoveOnly) {
-            if(game.isKeyDown(GLFW.GLFW_KEY_RIGHT)) {
-                node.getRotation().identity().rotate((float)Math.toRadians(0), 0, 1, 0);
-                getVelocity().x = speed;
-            } else if(game.isKeyDown(GLFW.GLFW_KEY_LEFT)) {
-                node.getRotation().identity().rotate((float)Math.toRadians(180), 0, 1, 0);
-                getVelocity().x = -speed;
-            } else {
-                node.getRotation().identity().rotate((float)Math.toRadians(-90), 0, 1, 0);
-                moving = false;
+        if(game.isButtonDown(0) && f.length() > 0.0000001 && dl > 0.1) {
+            f.normalize().cross(0, 1, 0, r).normalize().mul(speed * dx / dl);
+            f.mul(-speed * dy / dl).add(r);
+            getVelocity().add(f);
+            f.normalize();
+            float radians = (float)Math.acos(Math.max(-1, Math.min(1, f.x)));
+            if(f.z > 0) {
+                radians = (float)Math.PI * 2 - radians;
             }
-        } else {
-            scene.getCamera().getOffset().mul(-1, 0, -1, f).normalize();
-            f.cross(0, 1, 0, r).normalize();
-            if(game.isKeyDown(GLFW.GLFW_KEY_RIGHT)) {
-                f.zero();
-                r.mul(speed);
-            } else if(game.isKeyDown(GLFW.GLFW_KEY_LEFT)) {
-                f.zero();
-                r.mul(-speed);
-            } else if(game.isKeyDown(GLFW.GLFW_KEY_UP)) {
-                f.mul(speed);
-                r.zero();
-            } else if(game.isKeyDown(GLFW.GLFW_KEY_DOWN)) {
-                f.mul(-speed);
-                r.zero();
-            } else {
-                moving = false;
-                f.zero();
-                r.zero();
-            }
-            getVelocity().add(f.add(r));
-            if(moving) {
-                f.normalize();
-                float a = (float)Math.acos(Math.max(-0.999f, Math.min(0.999f, f.x)));
-                if(f.z > 0) {
-                    a = (float)Math.PI * 2 - a;
+            node.getRotation().identity().rotate(radians, 0, 1, 0);
+            moving = true;
+        }
+        if(mesh != null) {
+            if(isOnGround()) {
+                boolean set = mesh.isLooping();
+
+                if(!set) {
+                    set = mesh.isDone();
                 }
-                node.getRotation().identity().rotate(a, 0, 1, 0);
+                if(set) {
+                    if(moving) {
+                        mesh.setSequence(40, 45, 8, true);
+                    } else {
+                        mesh.setSequence(0, 39, 10, true);
+                    }
+                }
+            } else {
+                mesh.setSequence(66, 67, 7, false);
             }
         }
         getPosition().set(node.getPosition());
         collide(scene.getRoot());
-        if(xMoveOnly) {
-            getPosition().mul(1, 1, 0);
-        }
         node.getPosition().set(getPosition());
+
+        Vector3f offset = scene.getCamera().getOffset();
+
+        scene.getCamera().getTarget().set(getPosition());
+
+        float length = offsetLength;
+        
+        setTime(length + (radius - 1));
+        getOrigin().set(getPosition());
+        offset.normalize(getDirection());
+
+        if(intersect(scene.getRoot()) != null) {
+            length = Math.min(length, getTime()) - (radius - 1);
+        }
+        getPosition().add(getDirection().mul(length), scene.getCamera().getEye());
 
         return moving;
     }
-
 
     public Collider collide(Node node) throws Exception {
         Game game = Game.getInstance();
@@ -251,15 +287,8 @@ public final class Collider {
         if(delta.length() < 0.0000001) {
             return this;
         }
-
-        toUnitMatrix.identity().scale(1 / radii.x, 1 / radii.y, 1  / radii.z);
-        toUnitMatrix.invert(inverseToUnitMatrix);
-
-        delta.mulDirection(toUnitMatrix);
-        position.mulPosition(toUnitMatrix);
-
-        if(delta.length() > 0.5f) {
-            delta.normalize().mul(0.5f);
+        if(delta.length() > radius * 0.5f) {
+            delta.normalize().mul(radius * 0.5f);
         }
         position.add(delta);
         onGround = false;
@@ -270,10 +299,9 @@ public final class Collider {
         tested = 0;
 
         for(int i = 0; i < loopCount; i++) {
-            bounds.getMin().set(position).sub(1, 1, 1);
-            bounds.getMax().set(position).add(1, 1, 1);
-            bounds.transform(inverseToUnitMatrix);
-            time[0] = 1;
+            bounds.getMin().set(position).sub(radius, radius, radius);
+            bounds.getMax().set(position).add(radius, radius, radius);
+            time[0] = radius;
             hit = null;
             node.traverse((n) -> {
                 if(n.isCollidable() && bounds.touches(n.getBounds())) {
@@ -292,7 +320,6 @@ public final class Collider {
                 return true;
             });
             if(hit != null) {
-                normal.mulDirection(inverseToUnitMatrix).normalize();
                 if((float)Math.toDegrees(Math.acos(Math.max(-0.99f, Math.min(0.99f, normal.dot(0, 1, 0))))) < groundSlope) {
                     onGround = true;
                     groundNormal.add(normal);
@@ -323,8 +350,6 @@ public final class Collider {
             }
             velocity.y = 0;
         }
-        position.mulPosition(inverseToUnitMatrix);
-
         return this;
     }
 
@@ -339,15 +364,12 @@ public final class Collider {
     private void collide(Triangle triangle) {
         float t = time[0];
 
-        tTriangle.set(triangle).transform(toUnitMatrix);
-        triangle = tTriangle;
-
         triangle.getNormal().negate(direction);
         if(triangle.intersectsPlane(position, direction, time)) {
             point.set(direction).mul(time[0]).add(position);
             if(triangle.contains(point, 0)) {
                 normal.set(triangle.getNormal());
-                resolvedPosition.set(point).add(direction.set(triangle.getNormal()));
+                resolvedPosition.set(point).add(direction.set(triangle.getNormal()).mul(radius));
                 hit = triangle2.set(triangle);
             } else {
                 time[0] = t;
@@ -356,7 +378,7 @@ public final class Collider {
                 if(direction.length() > 0.0000001 && direction.length() < time[0]) {
                     time[0] = direction.length();
                     direction.normalize(normal);
-                    resolvedPosition.set(point).add(direction.normalize());
+                    resolvedPosition.set(point).add(direction.normalize(radius));
                     hit = triangle2.set(triangle);
                 }
             }

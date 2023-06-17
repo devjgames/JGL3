@@ -18,8 +18,6 @@ import org.lwjgl.glfw.GLFW;
 public class Collide extends Demo {
 
     private final File file;
-    private final int jump;
-    private final float minY;
     private Scene scene = null;
     private Node playerNode = null;
     private KeyFrameMesh mesh = null;
@@ -27,13 +25,13 @@ public class Collide extends Demo {
     private Sound jumpSound, painSound;
     private boolean dead;
     private final Vector3f start = new Vector3f();
-    private final boolean xMoveOnly;
+    private final Vector3f startOffset = new Vector3f();
+    private final int offsetLength = 150;
+    private final int jump;
 
-    public Collide(File file, int jump, float minY, boolean xMoveOnly) {
+    public Collide(File file, int jump) {
         this.file = file;
         this.jump = jump;
-        this.minY = minY;
-        this.xMoveOnly = xMoveOnly;
         collider.setContactListener((tri) -> {
             if(tri.getTag() == 2) {
                 kill();
@@ -54,9 +52,12 @@ public class Collide extends Demo {
         painSound = game.getAssets().load(IO.file("assets/sound/pain.wav"));
         painSound.setVolume(0.25f);
 
-        scene.getCamera().getTarget().zero();
-        scene.getCamera().getTarget().add(0, 300, 300, scene.getCamera().getEye());
-        scene.getCamera().getUp().set(0, 1, 0);
+        Vector3f offset = scene.getCamera().getOffset();
+
+        offset.normalize(offsetLength);
+        startOffset.set(offset);
+        scene.getCamera().getTarget().set(start);
+        scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());
 
         dead = false;
     }
@@ -88,46 +89,12 @@ public class Collide extends Demo {
         if(dead) {
             if(!painSound.isPlaying()) {
                 playerNode.getPosition().set(start);
+                scene.getCamera().getTarget().set(start).add(startOffset, scene.getCamera().getEye());
+                scene.getCamera().getUp().set(0, 1, 0);
                 dead = false;
             }
         } else {
-            boolean moving = collider.move(scene, playerNode, 100, jump, jumpSound, xMoveOnly);
-            boolean isect = false;
-
-            collider.getOrigin().set(playerNode.getPosition());
-            collider.getDirection().set(0, -1, 0);
-            collider.setTime(collider.getRadii().y + 3);
-            isect |= collider.intersect(scene.getRoot()) != null;
-            collider.getOrigin().x += collider.getRadii().x;
-            isect |= collider.intersect(scene.getRoot()) != null;
-            collider.getOrigin().set(playerNode.getPosition());
-            collider.getOrigin().x -= collider.getRadii().x;
-            isect |= collider.intersect(scene.getRoot()) != null;
-            collider.getOrigin().set(playerNode.getPosition());
-            collider.getOrigin().z += collider.getRadii().z;
-            isect |= collider.intersect(scene.getRoot()) != null;
-            collider.getOrigin().set(playerNode.getPosition());
-            collider.getOrigin().z -= collider.getRadii().z;
-            isect |= collider.intersect(scene.getRoot()) != null;
-
-            if(collider.isOnGround() || isect) {
-                boolean set = !mesh.isSequence(66, 69, 7, false);
-                
-                if(!set) {
-                    set = mesh.isDone();
-                }
-                if(moving) {
-                    mesh.setSequence(40, 45, 8, true);
-                } else {
-                   mesh.setSequence(0, 39, 10, true);
-                }
-            } else {
-                mesh.setSequence(66, 69, 7, false);
-            }
-
-            if(playerNode.getPosition().y < minY) {
-                kill();
-            }
+            collider.move(scene, playerNode, offsetLength, 3, 100, jump, jumpSound, true);
         }
         return !game.isKeyDown(GLFW.GLFW_KEY_ESCAPE);
     }

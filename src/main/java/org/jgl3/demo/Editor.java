@@ -604,7 +604,11 @@ public class Editor extends Demo {
 
                     if(extensions.contains(extension)) {
                         renderableFiles.add(file);
-                    } else if(extension.equals(".png")) {
+                    } else if(
+                        extension.equals(".png") ||
+                        extension.equals(".jpg") ||
+                        extension.equals(".tex")
+                    ) {
                         textureFiles.add(file);
                     }
                 }
