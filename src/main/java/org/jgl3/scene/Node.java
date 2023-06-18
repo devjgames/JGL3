@@ -33,6 +33,9 @@ public final class Node implements Serializable {
     private boolean dynamic = false;
     private boolean lightingEnabled = false;
     private boolean vertexColorEnabled = false;
+    private boolean lightMapEnabled = false;
+    private boolean castsShadow = false;
+    private boolean receivesShadow = true;
     private boolean isLight = false;
     private float lightRadius = 300;
     private DepthState depthState = DepthState.READWRITE;
@@ -130,6 +133,33 @@ public final class Node implements Serializable {
 
     public Node setVertexColorEnabled(boolean enabled) {
         vertexColorEnabled = enabled;
+        return this;
+    }
+
+    public boolean isLightMapEnabled() {
+        return lightMapEnabled;
+    }
+
+    public Node setLightMapEnabled(boolean enabled) {
+        lightMapEnabled = enabled;
+        return this;
+    }
+
+    public boolean getCastsShadow() {
+        return castsShadow;
+    }
+
+    public Node setCastsShadow(boolean castsShadow) {
+        this.castsShadow = castsShadow;
+        return this;
+    }
+
+    public boolean getReceivesShadow() {
+        return receivesShadow;
+    }
+
+    public Node setReceivesShadow(boolean receivesShadow) {
+        this.receivesShadow = receivesShadow;
         return this;
     }
 

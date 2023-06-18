@@ -19,6 +19,7 @@ import org.jgl3.Renderer;
 import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.jgl3.scene.KeyFrameMesh;
+import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
@@ -80,6 +81,11 @@ public class Editor extends Demo {
     private final BoundingBox bounds = new BoundingBox();
     private final Triangle triangle = new Triangle();
     private Node clipboard = null;
+    private final LightMapper lightMapper;
+
+    public Editor(LightMapper lightMapper) {
+        this.lightMapper = lightMapper;
+    }
 
     @Override
     public void init() throws Exception {
@@ -193,6 +199,12 @@ public class Editor extends Demo {
                 editor = NODE_EDITOR;
                 resetNodeEditor = true;
             }
+            if(ui.button("Editor.zero.targ.button", 5, "Z Targ", false)) {
+                Vector3f x = scene.getCamera().getOffset();
+
+                scene.getCamera().getTarget().zero();
+                scene.getCamera().getTarget().add(x, scene.getCamera().getEye());
+            }
             for(int i = 0; i != modes.length; i++) {
                 if(ui.button("Editor.mode.button." + i, 5, modes[i], i == mode)) {
                     mode = i;
@@ -204,8 +216,8 @@ public class Editor extends Demo {
                 UIManager.BACKGROUND.set(UIManager.FOREGROUND);
                 UIManager.FOREGROUND.set(x, x, x, 1);
             }
-            ui.addRow(5);
             if(selection != null) {
+                ui.addRow(5);
                 if(ui.button("Editor.pos.to.target.button", 0, "Pos To Target", false)) {
                     selection.getPosition().set(scene.getCamera().getTarget());
                 }
@@ -247,8 +259,8 @@ public class Editor extends Demo {
                 }
             }
         } 
-        ui.addRow(5);
         if(editor == ADD_SCENE) {
+            ui.addRow(5);
             if((result = ui.textField("Editor.scene.name.field", 0, "Name", "", false, 10)) != null) {
                 sceneName = (String)result;
             }
@@ -263,13 +275,14 @@ public class Editor extends Demo {
                 }
             }
         } else if(editor == SCENES) {
+            ui.addRow(5);
             if((result = ui.list("Editor.scenes.list", 0, sceneNames, 15, 10, selScene)) != null) {
                 File file = IO.file(IO.file("assets/scenes"), sceneNames.get((Integer)result) + ".scn");
 
                 game.getAssets().clear();
                 scene = null;
                 sceneFile = null;
-                scene = Scene.load(file);
+                scene = Scene.load(file, lightMapper);
                 scene.loadUI();
                 sceneFile = file;
                 selection = null;
@@ -278,6 +291,7 @@ public class Editor extends Demo {
             }
             selScene = -2;
         } else if(editor == TEXTURE) {
+            ui.addRow(5);
             if((result = ui.list("Editor.textures.list", 0, textureNames, 25, 10, selTexture)) != null) {
                 selection.setTexture(game.getAssets().load(textureFiles.get((Integer)result)));
                 editor = NODE_EDITOR;
@@ -285,6 +299,7 @@ public class Editor extends Demo {
             }
             selTexture = -2;
         } else if(editor == RENDERABLES) {
+            ui.addRow(5);
             if((result = ui.list("Editor.renderables.list", 0, renderableNames, 25, 20, selRenderable)) != null) {
                 Node node = new Node();
                 File file = renderableFiles.get((Integer)result);
@@ -341,6 +356,60 @@ public class Editor extends Demo {
             }
             ui.addRow(5);
             ui.textField("Editor.scene.editor.background.color.field", 0, "Background", scene.getBackgroundColor(), resetSceneEditor, 20);
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.ao.strength.field", 0, "AO Strength", scene.getAOStrength(), resetSceneEditor, 10)) != null) {
+                scene.setAOStrength((Float)result);
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.ao.length.field", 0, "AO Length", scene.getAOLength(), resetSceneEditor, 10)) != null) {
+                scene.setAOLength((Float)result);
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.sample.radius.field", 0, "Sample Radius", scene.getSampleRadius(), resetSceneEditor, 10)) != null) {
+                scene.setSampleRadius((Float)result);
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.sample.count.field", 0, "Sample Count", scene.getSampleCount(), resetSceneEditor, 10)) != null) {
+                scene.setSampleCount((Integer)result);
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.lm.width.field", 0, "LM Width", scene.getLightMapWidth(), resetSceneEditor, 10)) != null) {
+                scene.setLightMapWidth(Math.max(64, Math.min(4096, (Integer)result)));
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.lm.height.field", 0, "LM Height", scene.getLightMapHeight(), resetSceneEditor, 10)) != null) {
+                scene.setLightMapHeight(Math.max(64, Math.min(4096, (Integer)result)));
+            }
+            ui.addRow(5);
+            if(ui.button("Editor.scene.lm.lambert.button", 0, "Light Map Lambert", scene.isLightMapLambert())) {
+                scene.setLightMapLambert(!scene.isLightMapLambert());
+            }
+            ui.addRow(5);
+            if(ui.button("Editor.scene.map.button", 0, "Map", false)) {
+                File mapFile = IO.file(sceneFile.getParentFile(), IO.fileNameWithOutExtension(sceneFile) + ".png");
+
+                lightMapper.map(scene, mapFile, true);
+            }
+            if(ui.button("Editor.scene.map.clear.button", 5, "Clear Map", false)) {
+                scene.getRoot().traverse((n) -> {
+                    n.setTexture2(null);
+                    return true;
+                });
+            }
+            Node node = scene.getRoot().find((n) -> {
+                Texture texture = n.getTexture2();
+                if(texture != null) {
+                    return true;
+                }
+                return false;
+            }, true);
+            boolean linear = (node == null) ? true : node.isTexture2Linear();
+            if(ui.button("Editor.scene.map.linear.button", 5, "Linear", linear)) {
+                scene.getRoot().traverse((n) -> {
+                    n.setTexture2Linear(!n.isTexture2Linear());
+                    return true;
+                });
+            }
             resetSceneEditor = false;
         } else if(editor == NODE_EDITOR) {
             Renderable renderable = selection.getRenderable();
@@ -356,6 +425,7 @@ public class Editor extends Demo {
                 }
             }
 
+            ui.addRow(5);
             if((result = ui.textField("Editor.node.editor.name.field", 0, "Name", selection.getName(), resetNodeEditor, 20)) != null) {
                 selection.setName((String)result);
             }
@@ -415,6 +485,16 @@ public class Editor extends Demo {
                             return true;
                         });
                     }
+                }
+                ui.addRow(5);
+                if(ui.button("Editor.node.light.map.enabled.button", 0, "L Map", selection.isLightMapEnabled())) {
+                    selection.setLightMapEnabled(!selection.isLightMapEnabled());
+                }
+                if(ui.button("Editor.node.casts.shadow.button", 5, "C Shadow", selection.getCastsShadow())) {
+                    selection.setCastsShadow(!selection.getCastsShadow());
+                }
+                if(ui.button("Editor.node.receives.shadow.button", 5, "R Shadow", selection.getReceivesShadow())) {
+                    selection.setReceivesShadow(!selection.getReceivesShadow());
                 }
                 ui.addRow(5);
                 if(ui.button("Editor.node.editor.opaque.button", 0, "Opaque", selection.getBlendState() == BlendState.OPAQUE)) {

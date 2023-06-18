@@ -266,6 +266,16 @@ public class Mesh implements Renderable {
 
     @Override
     public Renderable newInstance() throws Exception {
-        return this;
+        Mesh mesh = new Mesh(file);
+
+        mesh.vertices.addAll(vertices);
+        mesh.indices.addAll(indices);
+        mesh.faces.addAll(faces);
+        if(vertexArray != null) {
+            mesh.vertexArray = vertexArray.clone();
+        }
+        mesh.bounds.set(bounds);
+
+        return mesh;
     }
 }

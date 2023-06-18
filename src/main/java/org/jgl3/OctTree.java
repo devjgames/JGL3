@@ -5,7 +5,7 @@ import java.util.Vector;
 public final class OctTree {
 
     public static interface Visit {
-        void visit(Triangle triangle);
+        boolean visit(Triangle triangle);
     }
 
     public static OctTree create(Vector<Triangle> triangles, int minTrisPerTree) {
@@ -104,7 +104,9 @@ public final class OctTree {
     public void traverse(BoundingBox bounds, Visit v) {
         if(this.bounds.touches(bounds)) {
             for(Triangle triangle : triangles) {
-                v.visit(triangle);
+                if(!v.visit(triangle)) {
+                    return;
+                }
             }
             for(OctTree tree : children) {
                 tree.traverse(bounds, v);

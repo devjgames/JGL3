@@ -501,9 +501,6 @@ public class MeshBuilder {
             } else {
                 t.set(p.x + ox, p.y + oy).div(units);
             }
-            if(units == 2000) {
-                System.out.println(t);
-            }
         }
     }
 

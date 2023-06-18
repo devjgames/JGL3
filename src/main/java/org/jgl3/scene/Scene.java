@@ -38,6 +38,13 @@ public final class Scene implements Serializable {
     private DepthState lastDepthState = null;
     private CullState lastCullState = null;
     private BlendState lastBlendState = null;
+    private float aoStrength = 2;
+    private float aoLength = 32;
+    private float sampleRadius = 32;
+    private int sampleCount = 64;
+    private int lightMapWidth = 128;
+    private int lightMapHeight = 128;
+    private boolean lightMapLambert = true;
 
     public int getNodesRenderer() {
         return nodesRendered;
@@ -49,6 +56,69 @@ public final class Scene implements Serializable {
 
     public int getCollidableTriangles() {
         return collidableTriangles;
+    }
+
+    public float getAOStrength() {
+        return aoStrength;
+    }
+
+    public Scene setAOStrength(float strength) {
+        aoStrength = strength;
+        return this;
+    }
+
+    public float getAOLength() {
+        return aoLength;
+    }
+
+    public Scene setAOLength(float length) {
+        aoLength = length;
+        return this;
+    }
+
+    public float getSampleRadius() {
+        return sampleRadius;
+    }
+
+    public Scene setSampleRadius(float radius) {
+        this.sampleRadius = radius;
+        return this;
+    }
+
+    public int getSampleCount() {
+        return sampleCount;
+    }
+
+    public Scene setSampleCount(int count) {
+        sampleCount = count;
+        return this;
+    }
+
+    public int getLightMapWidth() {
+        return lightMapWidth;
+    }
+
+    public Scene setLightMapWidth(int width) {
+        lightMapWidth = width;
+        return this;
+    }
+
+    public int getLightMapHeight() {
+        return lightMapHeight;
+    }
+
+    public Scene setLightMapHeight(int height) {
+        lightMapHeight = height;
+        return this;
+    }
+
+    public boolean isLightMapLambert() {
+        return lightMapLambert;
+    }
+
+    public Scene setLightMapLambert(boolean lambert) {
+        lightMapLambert = lambert;
+        return this;
     }
 
     public boolean getDrawLights() {
@@ -295,13 +365,15 @@ public final class Scene implements Serializable {
         }
     }
 
-    public static Scene load(File file) throws Exception {
+    public static Scene load(File file, LightMapper lightMapper) throws Exception {
         ObjectInputStream input = null;
         Scene scene = null;
 
         try {
             input = new ObjectInputStream(new FileInputStream(file));
             scene = (Scene)input.readObject();
+
+            lightMapper.map(scene, IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png"), false);
         } finally {
             if(input != null) {
                 input.close();

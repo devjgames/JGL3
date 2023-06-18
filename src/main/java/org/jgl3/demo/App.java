@@ -7,6 +7,7 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.scene.KeyFrameMeshLoader;
+import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Mesh;
 import org.jgl3.scene.MeshBuilder;
 import org.jgl3.scene.ParticleSystem;
@@ -80,9 +81,13 @@ public class App {
     }
 
     public static void main(String[] args) throws Exception {
+        LightMapper lightMapper = new LightMapper();
+
         new App(1000, 700, true,
-            new Editor(),
-            new Collide(IO.file("assets/scenes/scene1.scn"), 400)
+            new Editor(lightMapper),
+            new Collide(IO.file("assets/scenes/scene1.scn"), 0, lightMapper),
+            new Collide(IO.file("assets/scenes/scene2.scn"), 0, lightMapper),
+            new Collide(IO.file("assets/scenes/scene3.scn"), 0, lightMapper)
         );
     }
 }

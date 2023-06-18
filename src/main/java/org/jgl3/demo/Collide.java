@@ -10,6 +10,7 @@ import org.jgl3.Resource;
 import org.jgl3.Sound;
 import org.jgl3.scene.Collider;
 import org.jgl3.scene.KeyFrameMesh;
+import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.Scene;
 import org.joml.Vector3f;
@@ -28,10 +29,12 @@ public class Collide extends Demo {
     private final Vector3f startOffset = new Vector3f();
     private final int offsetLength = 150;
     private final int jump;
+    private final LightMapper lightMapper;
 
-    public Collide(File file, int jump) {
+    public Collide(File file, int jump, LightMapper lightMapper) {
         this.file = file;
         this.jump = jump;
+        this.lightMapper = lightMapper;
         collider.setContactListener((tri) -> {
             if(tri.getTag() == 2) {
                 kill();
@@ -43,7 +46,7 @@ public class Collide extends Demo {
     public void init() throws Exception {
         Game game = Game.getInstance();
 
-        scene = Scene.load(file);
+        scene = Scene.load(file, lightMapper);
         playerNode = scene.getRoot().find("hero", true);
         mesh = (KeyFrameMesh)playerNode.getChild(0).getRenderable();
         start.set(playerNode.getPosition());
