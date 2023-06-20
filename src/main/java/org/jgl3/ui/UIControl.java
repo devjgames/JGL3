@@ -5,8 +5,8 @@ abstract class UIControl {
     private final UIManager ui;
     private int x = 0;
     private int y = 0;
-    private final int w;
-    private final int h;
+    private int w;
+    private int h;
 
     public UIControl(UIManager ui, int w, int h) {
         this.w = w;
@@ -37,6 +37,11 @@ abstract class UIControl {
 
     public int getHeight() {
         return h;
+    }
+
+    public void setSize(int width, int height) {
+        w = width;
+        h = height;
     }
 
     public void onMouseButtonDown(int x, int y) {

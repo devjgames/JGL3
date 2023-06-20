@@ -33,9 +33,6 @@ public final class Node implements Serializable {
     private boolean dynamic = false;
     private boolean lightingEnabled = false;
     private boolean vertexColorEnabled = false;
-    private boolean lightMapEnabled = false;
-    private boolean castsShadow = false;
-    private boolean receivesShadow = true;
     private boolean isLight = false;
     private float lightRadius = 300;
     private DepthState depthState = DepthState.READWRITE;
@@ -44,7 +41,6 @@ public final class Node implements Serializable {
     private boolean followEye = false;
     private transient Texture texture = null;
     private transient Texture texture2 = null;
-    private transient Texture matCap = null;
     private transient Renderable renderable = null;
     private final Vector4f lightColor = new Vector4f(1, 1, 1, 1);
     private final Vector4f ambientColor = new Vector4f(0, 0, 0, 1);
@@ -72,6 +68,7 @@ public final class Node implements Serializable {
     private boolean textureClampToEdge = false;
     private boolean texture2Linear = true;
     private boolean texture2ClampToEdge = true;
+    private transient Animator animator = null;
 
     public String getName() {
         return name;
@@ -136,33 +133,6 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public boolean isLightMapEnabled() {
-        return lightMapEnabled;
-    }
-
-    public Node setLightMapEnabled(boolean enabled) {
-        lightMapEnabled = enabled;
-        return this;
-    }
-
-    public boolean getCastsShadow() {
-        return castsShadow;
-    }
-
-    public Node setCastsShadow(boolean castsShadow) {
-        this.castsShadow = castsShadow;
-        return this;
-    }
-
-    public boolean getReceivesShadow() {
-        return receivesShadow;
-    }
-
-    public Node setReceivesShadow(boolean receivesShadow) {
-        this.receivesShadow = receivesShadow;
-        return this;
-    }
-
     public boolean isLight() {
         return isLight;
     }
@@ -214,18 +184,6 @@ public final class Node implements Serializable {
 
     public Node setFollowEye(boolean follow) {
         followEye = follow;
-        return this;
-    }
-
-    public Texture getMatCap() {
-        return matCap;
-    }
-
-    public Node setMatCap(Texture texture) {
-        matCap = texture;
-        if(matCap != null) {
-            matCap.toLinear(true);
-        }
         return this;
     }
 
@@ -281,6 +239,20 @@ public final class Node implements Serializable {
     public Node setClampTexture2ToEdge(boolean clamp) {
         setState(texture2, texture2Linear, texture2ClampToEdge = clamp);
         return this;
+    }
+
+    public Animator getAnimator() {
+        return animator;
+    }
+
+    public void setAnimator(Scene scene, Animator animator) throws Exception {
+        if(animator != null) {
+            animator = animator.newInstance();
+            animator.init(scene, this);
+        } else if(this.animator != null) {
+            this.animator.detach(scene, this);
+        }
+        this.animator = animator;
     }
 
     public Renderable getRenderable() {
@@ -388,23 +360,27 @@ public final class Node implements Serializable {
         return children.lastElement();
     }
 
-    public Node detachFromParent() {
+    public Node detachFromParent(Scene scene) throws Exception {
         if(parent != null) {
             parent.children.remove(this);
             parent = null;
+
+            if(animator != null) {
+                animator.detach(scene, this);
+            }
         }
         return this;
     }
 
-    public Node addChild(Node child) {
-        child.detachFromParent().parent = this;
+    public Node addChild(Scene scene, Node child) throws Exception {
+        child.detachFromParent(scene).parent = this;
         children.add(child);
         return this;
     }
 
-    public Node detachAllChildren() {
+    public Node detachAllChildren(Scene scene) throws Exception {
         while(!children.isEmpty()) {
-            children.get(0).detachFromParent();
+            children.get(0).detachFromParent(scene);
         }
         return this;
     }
@@ -556,16 +532,11 @@ public final class Node implements Serializable {
     private void writeObject(java.io.ObjectOutputStream out) throws IOException {
         out.defaultWriteObject();
 
-        String mc = "@";
         String t1 = "@";
         String t2 = "@";
         String rd = "@";
+        String an = "@";
 
-        if(matCap != null) {
-            if(matCap.getFile() != null) {
-                mc = matCap.getFile().getPath();
-            }
-        }
         if(texture != null) {
             if(texture.getFile() != null) {
                 t1 = texture.getFile().getPath();
@@ -581,10 +552,15 @@ public final class Node implements Serializable {
                 rd = renderable.getFile().getPath();
             }
         }
-        out.writeObject(mc);
+        if(animator != null) {
+            if(animator.getFile() != null) {
+                an = animator.getFile().getPath();
+            }
+        }
         out.writeObject(t1);
         out.writeObject(t2);
         out.writeObject(rd);
+        out.writeObject(an);
 
         if(renderable instanceof KeyFrameMesh) {
             KeyFrameMesh mesh = (KeyFrameMesh)renderable;
@@ -604,22 +580,15 @@ public final class Node implements Serializable {
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
 
-        String mc = (String)in.readObject();
         String t1 = (String)in.readObject();
         String t2 = (String)in.readObject();
         String rd = (String)in.readObject();
+        String an = (String)in.readObject();
         int start = (Integer)in.readObject();
         int end = (Integer)in.readObject();
         int speed = (Integer)in.readObject();
         boolean looping = (Boolean)in.readObject();
 
-        if(!mc.equals("@")) {
-            try {
-                setMatCap(Game.getInstance().getAssets().load(IO.file(mc)));
-            } catch(Exception ex) {
-                ex.printStackTrace();
-            }
-        }
         if(!t1.equals("@")) {
             try {
                 setTexture(Game.getInstance().getAssets().load(IO.file(t1)));
@@ -643,6 +612,14 @@ public final class Node implements Serializable {
 
                     mesh.setSequence(start, end, speed, looping);
                 }
+            } catch(Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+        if(!an.equals("@")) {
+            try {
+                animator = Game.getInstance().getAssets().load(IO.file(an));
+                animator = animator.newInstance();
             } catch(Exception ex) {
                 ex.printStackTrace();
             }

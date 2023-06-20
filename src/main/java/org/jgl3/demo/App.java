@@ -6,14 +6,18 @@ import org.jgl3.GFX;
 import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Renderer;
+import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMeshLoader;
-import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Mesh;
-import org.jgl3.scene.MeshBuilder;
-import org.jgl3.scene.ParticleSystem;
 import org.jgl3.ui.UIManager;
 
 public class App {
+
+    private static Demo demo = null;
+
+    public static Demo getDemo() {
+        return demo;
+    }
 
     public App(int width, int height, boolean resizable, Demo ... demos) throws Exception {
         Game game = null;
@@ -25,8 +29,8 @@ public class App {
 
             Vector<String> demoNames = new Vector<>();
             int selDemo = -1;
-            Demo demo = null;
-
+            
+            demo = null;
             for(Demo iDemo : demos) {
                 demoNames.add(iDemo.toString());
             }
@@ -74,20 +78,16 @@ public class App {
     }
 
     protected void registerAssetLoaders() {
-        ParticleSystem.registerAssetLoader();
-        MeshBuilder.registerAssetLoader();
         Mesh.registerAssetLoader();
         KeyFrameMeshLoader.registerAssetLoader();
+        Animator.registerAssetLoader();
     }
 
     public static void main(String[] args) throws Exception {
-        LightMapper lightMapper = new LightMapper();
-
         new App(1000, 700, true,
-            new Editor(lightMapper),
-            new Collide(IO.file("assets/scenes/scene1.scn"), 0, lightMapper),
-            new Collide(IO.file("assets/scenes/scene2.scn"), 0, lightMapper),
-            new Collide(IO.file("assets/scenes/scene3.scn"), 0, lightMapper)
+            new Editor(),
+            new Player(IO.file("assets/scenes/scene1.scn")),
+            new Player(IO.file("assets/scenes/scene2.scn"))
         );
     }
 }

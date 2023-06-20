@@ -16,31 +16,21 @@ import org.lwjgl.opengl.GL30;
 
 public final class Texture extends Resource {
 
-    public static interface Generator {
-        Texture generate(File file, String[] tokens) throws Exception;
-    }
-
     public static final class Loader implements AssetLoader {
         @Override
         public Object load(File file, AssetManager assets) throws Exception {
-            if(IO.extension(file).equals(".tex")) {
-                String[] tokens = new String(IO.readAllBytes(file)).split("\\s+");
+            BufferedImage image = ImageIO.read(file);
+            int w = image.getWidth();
+            int h = image.getHeight();
+            int[] pixels = new int[w * h];
 
-                return ((Generator)Class.forName(tokens[0]).getConstructors()[0].newInstance()).generate(file, tokens);
-            } else {
-                BufferedImage image = ImageIO.read(file);
-                int w = image.getWidth();
-                int h = image.getHeight();
-                int[] pixels = new int[w * h];
+            image.getRGB(0, 0, w, h, pixels, 0, w);
+            for(int i = 0; i != pixels.length; i++) {
+                int p = pixels[i];
 
-                image.getRGB(0, 0, w, h, pixels, 0, w);
-                for(int i = 0; i != pixels.length; i++) {
-                    int p = pixels[i];
-
-                    pixels[i] = (p & 0xFF000000) | ((p << 16) & 0xFF0000) | (p & 0xFF00) | ((p >> 16) & 0xFF);
-                }
-                return new Texture(file, w, h, pixels);
+                pixels[i] = (p & 0xFF000000) | ((p << 16) & 0xFF0000) | (p & 0xFF00) | ((p >> 16) & 0xFF);
             }
+            return new Texture(file, w, h, pixels);
         }
     }
     

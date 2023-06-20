@@ -6,6 +6,8 @@ import java.util.Vector;
 import org.jgl3.Font;
 import org.jgl3.Game;
 import org.jgl3.IO;
+import org.jgl3.PixelFormat;
+import org.jgl3.RenderTarget;
 import org.jgl3.Resource;
 import org.jgl3.Texture;
 import org.joml.Vector2f;
@@ -305,20 +307,50 @@ public final class UIManager extends Resource {
         return list.getChanged();
     }
 
-    public void beginView(String key, int gap, Texture texture) {
+    public RenderTarget beginView(String key, int gap, int width, int height, RenderTarget renderTarget, int anchorRight, int anchorBottom) throws Exception {
+        if(renderTarget == null) {
+            renderTarget = game.getAssets().manage(new RenderTarget(width, height, PixelFormat.COLOR));
+        }
+
+        Texture texture = renderTarget.getTexture(0);
+        int s = game.getScale();
+
+        if(anchorRight >= 0 || anchorBottom >= 0) {
+            int vx = lx + gap * s;
+            int vy = ly;
+            int w = game.getWidth() - vx;
+            int h = game.getHeight() - vy;
+
+            if(anchorRight >= 0) {
+                w -= anchorRight * s;
+            } 
+            if(anchorBottom >= 0) {
+                h -= anchorBottom * s;
+            }
+            if(w > 50 && h > 50 && (w != texture.getWidth() || h != texture.getHeight())) {
+                game.getAssets().unManage(renderTarget);
+                renderTarget = game.getAssets().manage(new RenderTarget(w, h, PixelFormat.COLOR));
+                texture = renderTarget.getTexture(0);
+                width = w;
+                height = h;
+            }
+        }
+
         currentView = (UIView)keyedControls.get(key);
 
         if(currentView == null) {
-            keyedControls.put(key, currentView = new UIView(this, texture.getWidth(), texture.getHeight()));
+            keyedControls.put(key, currentView = new UIView(this, width, height));
         }
-        lx += gap * game.getScale();
-        currentView.setLocation(lx, ly);
         currentView.setTexture(texture);
+        lx += gap * s;
+        currentView.setLocation(lx, ly);
         lx += currentView.getWidth();
 
         maxH = Math.max(currentView.getHeight(), maxH);
 
         controls.add(currentView);
+
+        return renderTarget;
     }
 
     public boolean isViewButtonDown() {

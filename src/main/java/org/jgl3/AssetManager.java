@@ -14,7 +14,6 @@ public final class AssetManager extends ResourceManager {
     public AssetManager() {
         registerAssetLoader(".png", 0, new Texture.Loader());
         registerAssetLoader(".jpg", 0, new Texture.Loader());
-        registerAssetLoader(".tex", 0, new Texture.Loader());
         registerAssetLoader(".wav", 0, new Sound.SoundLoader());
     }
     

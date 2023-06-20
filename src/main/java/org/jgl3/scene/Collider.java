@@ -202,7 +202,7 @@ public final class Collider {
         return this;
     }
 
-    public boolean move(Scene scene, Node node, float offsetLength, float groundBuffer, int speed, int jump, Sound jumpSound, boolean freeRotate) throws Exception {
+    public boolean move(Scene scene, Node node, int speed, int jump, Sound jumpSound) throws Exception {
         Game game = Game.getInstance();
         float dx = game.getMouseX() - game.getWidth() / 2;
         float dy = game.getMouseY() - game.getHeight() / 2;
@@ -216,8 +216,8 @@ public final class Collider {
             }
         }
 
-        if(game.isButtonDown(1) && freeRotate) {
-            scene.getCamera().rotateAroundTarget(-game.getDX() * 0.025f, game.getDY() * 0.025f);
+        if(game.isButtonDown(1)) {
+            scene.getCamera().rotateAroundTarget(-game.getDX() * 0.025f, 0);
         }
 
         if(game.isKeyDown(GLFW.GLFW_KEY_SPACE) && isOnGround() && jump > 0) {
@@ -266,16 +266,7 @@ public final class Collider {
 
         scene.getCamera().getTarget().set(getPosition());
 
-        float length = offsetLength;
-        
-        setTime(length + (radius - 1));
-        getOrigin().set(getPosition());
-        offset.normalize(getDirection());
-
-        if(intersect(scene.getRoot()) != null) {
-            length = Math.min(length, getTime()) - (radius - 1);
-        }
-        getPosition().add(getDirection().mul(length), scene.getCamera().getEye());
+        getPosition().add(offset, scene.getCamera().getEye());
 
         return moving;
     }

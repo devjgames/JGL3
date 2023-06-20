@@ -15,11 +15,12 @@ import org.jgl3.Font;
 import org.jgl3.GFX;
 import org.jgl3.Game;
 import org.jgl3.IO;
+import org.jgl3.RenderTarget;
 import org.jgl3.Renderer;
 import org.jgl3.Texture;
 import org.jgl3.Triangle;
+import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMesh;
-import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
@@ -43,6 +44,7 @@ public class Editor extends Demo {
     private static final int NODE_EDITOR = 3;
     private static final int RENDERABLES = 4;
     private static final int TEXTURE = 5;
+    private static final int ANIMATOR = 6;
 
     private Scene scene = null;
     private int mode = 0;
@@ -58,8 +60,8 @@ public class Editor extends Demo {
     };
     private int selScene = -1;
     private int selRenderable = -1;
-    private int selMatCap = -1;
     private int selTexture = -1;
+    private int selAnimator = -1;
     private int editor = -1;
     private String sceneName = "";
     private boolean resetNodeEditor = false;
@@ -70,9 +72,10 @@ public class Editor extends Demo {
     private final Vector<File> renderableFiles = new Vector<>();
     private final Vector<String> renderableNames = new Vector<>();
     private final Vector<String> sceneNames = new Vector<>();
-    private final Vector<String> matCapNames = new Vector<>();
     private final Vector<String> textureNames = new Vector<>();
     private final Vector<File> textureFiles = new Vector<>();
+    private final Vector<String> animatorNames = new Vector<>();
+    private final Vector<File> animatorFiles = new Vector<>();
     private boolean down = false;
     private final Vector3f origin = new Vector3f();
     private final Vector3f direction = new Vector3f();
@@ -81,11 +84,7 @@ public class Editor extends Demo {
     private final BoundingBox bounds = new BoundingBox();
     private final Triangle triangle = new Triangle();
     private Node clipboard = null;
-    private final LightMapper lightMapper;
-
-    public Editor(LightMapper lightMapper) {
-        this.lightMapper = lightMapper;
-    }
+    private RenderTarget renderTarget = null;
 
     @Override
     public void init() throws Exception {
@@ -93,7 +92,7 @@ public class Editor extends Demo {
         mode = 0;
         selScene = -1;
         selRenderable = -1;
-        selMatCap = -1;
+        selAnimator = -1;
         editor = -1;
         sceneName = "";
         resetNodeEditor = false;
@@ -102,29 +101,18 @@ public class Editor extends Demo {
         selection = null;
         clipboard = null;
         down = false;
+        renderTarget = null;
 
         extensions.clear();
         extensions.addAll(Game.getInstance().getAssets().getExtensionsForType(1));
 
-        matCapNames.clear();
-        
-        File[] files = IO.file("assets/matcap").listFiles();
-
-        if(files != null) {
-            for(File file : files) {
-                if(IO.extension(file).equals(".png")) {
-                    matCapNames.add(IO.fileNameWithOutExtension(file));
-                }
-            }
-        }
-        matCapNames.sort((a, b) -> a.compareTo(b));
-        matCapNames.insertElementAt("NONE", 0);
-
         renderableFiles.clear();
         renderableNames.clear();
         textureFiles.clear();
-        renderableFiles.clear();
-        popuplateRenderablesAndTextures(IO.file("assets"));
+        textureNames.clear();
+        animatorFiles.clear();
+        animatorNames.clear();
+        populateFileLists(IO.file("assets"));
         renderableFiles.sort((a, b) -> a.getName().compareTo(b.getName()));
         for(File file : renderableFiles) {
             renderableNames.add(file.getName());
@@ -132,6 +120,10 @@ public class Editor extends Demo {
         textureFiles.sort((a, b) -> a.getName().compareTo(b.getName()));
         for(File file : textureFiles) {
             textureNames.add(IO.fileNameWithOutExtension(file));
+        }
+        animatorFiles.sort((a, b) -> a.getName().compareTo(b.getName()));
+        for(File file : animatorFiles) {
+            animatorNames.add(IO.fileNameWithOutExtension(file));
         }
         populateScenes();
     }
@@ -145,14 +137,19 @@ public class Editor extends Demo {
         int s = game.getScale();
         int h = game.getHeight();
         boolean quit = false;
+        File loadSceneFile = null;
         Object result;
+        float c = (UIManager.BACKGROUND.x == 0) ? 0.15f : 0.2f;
 
-        GFX.clear(0.2f, 0.2f, 0.2f, 1);
-        if(scene != null) {
-            scene.render(game.getAspectRatio());
-        } else {
-            renderer.begin();
+        if(renderTarget != null) {
+            renderTarget.begin();
+            scene.render(renderTarget.getAspectRatio());
+            renderer.end();
+            renderTarget.end();
         }
+
+        GFX.clear(c, c, c, 1);
+        renderer.begin();
         renderer.initSprites();
         renderer.setFont(font);
         renderer.beginTriangles();
@@ -182,7 +179,7 @@ public class Editor extends Demo {
                     Node node = copy(clipboard);
 
                     selection = node;
-                    scene.getRoot().addChild(selection);
+                    scene.getRoot().addChild(scene, selection);
                     editor = NODE_EDITOR;
                     resetNodeEditor = true;
                 }
@@ -195,7 +192,7 @@ public class Editor extends Demo {
                 selection = new Node();
                 selection.setLight(true);
                 selection.setName("light");
-                scene.getRoot().addChild(selection);
+                scene.getRoot().addChild(scene, selection);
                 editor = NODE_EDITOR;
                 resetNodeEditor = true;
             }
@@ -216,8 +213,95 @@ public class Editor extends Demo {
                 UIManager.BACKGROUND.set(UIManager.FOREGROUND);
                 UIManager.FOREGROUND.set(x, x, x, 1);
             }
+            ui.addRow(5);
+            renderTarget = ui.beginView("Editor.scene.view", 0, 100, 100, renderTarget, (editor == -1) ? 50 : 300, 75);
+            if(ui.isViewButtonDown()) {
+                if(mode == ZOOM) {
+                    scene.getCamera().zoom(game.getDY());
+                } else if(mode == ROT) {
+                    scene.getCamera().rotateAroundTarget(-game.getDX() * 0.025f, game.getDY() * 0.025f);
+                } else if(mode == PANXZ) {
+                    scene.getCamera().move(scene.getCamera().getTarget(), game.getDX(), -game.getDY());
+                } else if(mode == PANY) {
+                    scene.getCamera().move(scene.getCamera().getTarget(), -game.getDY());
+                } else if(mode == SEL) {
+                    if(!down) {
+                        int th = renderTarget.getHeight();
+                        int tw = renderTarget.getWidth();
+                        int x = ui.getViewMouseX();
+                        int y = th - ui.getViewMouseY() - 1;
+
+                        scene.getCamera().unProject(x, y, 0, 0, 0, tw, th, origin);
+                        scene.getCamera().unProject(x, y, 1, 0, 0, tw, th, direction);
+                        direction.sub(origin).normalize();
+                        time[0] = Float.MAX_VALUE;
+
+                        selection = null;
+
+                        scene.getRoot().traverse((n) -> {
+                            bounds.clear();
+                            bounds.add(origin);
+                            bounds.add(point.set(direction).mul(time[0]).add(origin));
+                            if(bounds.touches(n.getBounds())) {
+                                for(int i = 0; i != n.getTriangleCount(); i++) {
+                                    n.getTriangle(i, triangle);
+                                    if(triangle.getNormal().dot(direction) < 0) {
+                                        if(triangle.intersects(origin, direction, 0, time)) {
+                                            selection = n;
+                                        }
+                                    }
+                                }
+                            }
+                            if(n.isLight()) {
+                                Node uiNode = scene.getUI();
+
+                                uiNode.getPosition().set(n.getAbsolutePosition());
+                                uiNode.getScale().set(2, 2, 2);
+                                uiNode.calcBoundsAndTransform(scene.getCamera());
+                                if(bounds.touches(uiNode.getBounds())) {
+                                    for(int i = 0; i != uiNode.getTriangleCount(); i++) {
+                                        uiNode.getTriangle(i, triangle);
+                                        if(triangle.getNormal().dot(direction) < 0) {
+                                            if(triangle.intersects(origin, direction, 0, time)) {
+                                                selection = n;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            return true;
+                        });
+                        if(selection == null) {
+                            editor = -1;
+                        } else {
+                            editor = NODE_EDITOR;
+                            resetNodeEditor = true;
+                        }
+                    }
+                } else if(selection != null) {
+                    if(mode == MOVXZ) {
+                        scene.getCamera().move(selection.getPosition(), game.getDX(), -game.getDY());
+                    } else if(mode == MOVY) {
+                        scene.getCamera().move(selection.getPosition(), -game.getDY());
+                    } else if(mode == ROTY && !selection.isLight()) {
+                        selection.getRotation().rotate(game.getDX() * 0.025f, 0, 1, 0);
+                    }
+                }
+                down = true;
+            } else {
+                if(down && selection != null && (mode == MOVXZ || mode == MOVY)) {
+                    int snap = Math.max(1, scene.getSnap());
+                    Vector3f p = selection.getPosition();
+
+                    p.x = (int)Math.floor(p.x / snap) * snap;
+                    p.y = (int)Math.floor(p.y / snap) * snap;
+                    p.z = (int)Math.floor(p.z / snap) * snap;
+                }
+                down = false;
+            }
+            ui.endView();
+            ui.addRow(5);
             if(selection != null) {
-                ui.addRow(5);
                 if(ui.button("Editor.pos.to.target.button", 0, "Pos To Target", false)) {
                     selection.getPosition().set(scene.getCamera().getTarget());
                 }
@@ -250,17 +334,21 @@ public class Editor extends Demo {
                     Node parent = selection.getParent();
 
                     if(parent != scene.getRoot() && parent.getChildCount() == 1) {
-                        parent.detachFromParent();
+                        parent.detachFromParent(scene);
                     } else {
-                        selection.detachFromParent();
+                        selection.detachFromParent(scene);
                     }
                     editor = -1;
                     selection = null;
                 }
             }
         } 
-        if(editor == ADD_SCENE) {
+        if(scene != null) {
+            ui.moveRightOf("Editor.scene.view", 5);
+        } else {
             ui.addRow(5);
+        }
+        if(editor == ADD_SCENE) {
             if((result = ui.textField("Editor.scene.name.field", 0, "Name", "", false, 10)) != null) {
                 sceneName = (String)result;
             }
@@ -275,31 +363,27 @@ public class Editor extends Demo {
                 }
             }
         } else if(editor == SCENES) {
-            ui.addRow(5);
             if((result = ui.list("Editor.scenes.list", 0, sceneNames, 15, 10, selScene)) != null) {
-                File file = IO.file(IO.file("assets/scenes"), sceneNames.get((Integer)result) + ".scn");
-
-                game.getAssets().clear();
-                scene = null;
-                sceneFile = null;
-                scene = Scene.load(file, lightMapper);
-                scene.loadUI();
-                sceneFile = file;
-                selection = null;
-                clipboard = null;
-                editor = -1;
+                loadSceneFile = IO.file(IO.file("assets/scenes"), sceneNames.get((Integer)result) + ".scn");
             }
             selScene = -2;
         } else if(editor == TEXTURE) {
-            ui.addRow(5);
             if((result = ui.list("Editor.textures.list", 0, textureNames, 25, 10, selTexture)) != null) {
                 selection.setTexture(game.getAssets().load(textureFiles.get((Integer)result)));
                 editor = NODE_EDITOR;
                 resetNodeEditor = true;
             }
             selTexture = -2;
+        } else if(editor == ANIMATOR) {
+            if((result = ui.list("Editor.animator.list", 0, animatorNames, 25, 10, selAnimator)) != null) {
+                Animator animator = game.getAssets().load(animatorFiles.get((Integer)result));
+
+                selection.setAnimator(scene, animator);
+                editor = NODE_EDITOR;
+                resetNodeEditor = true;
+            }
+            selAnimator = -2;
         } else if(editor == RENDERABLES) {
-            ui.addRow(5);
             if((result = ui.list("Editor.renderables.list", 0, renderableNames, 25, 20, selRenderable)) != null) {
                 Node node = new Node();
                 File file = renderableFiles.get((Integer)result);
@@ -327,23 +411,17 @@ public class Editor extends Demo {
                     node.getPosition().y -= mesh.getFrame(0).getBounds().getMin().z;
                     node.getPosition().y -= 16;
                     node.getRotation().rotate((float)Math.toRadians(-90), 1, 0, 0);
-                    parent.addChild(node);
+                    parent.addChild(scene, node);
                     node = parent;
-                } else if(IO.extension(file).equals(".par")) {
-                    node.setBlendState(BlendState.ADDITIVE);
-                    node.setDepthState(DepthState.READONLY);
-                    node.setVertexColorEnabled(true);
-                    node.setZOrder(100);
                 }
                 node.setName(IO.fileNameWithOutExtension(file));
                 selection = node;
-                scene.getRoot().addChild(selection);
+                scene.getRoot().addChild(scene, selection);
                 editor = NODE_EDITOR;
                 resetNodeEditor = true;
             }
             selRenderable = -2;
         } else if(editor == SCENE_EDITOR) {
-            ui.addRow(5);
             if((result = ui.textField("Editor.scene.editor.snap.field", 0, "Snap", scene.getSnap(), resetSceneEditor, 6)) != null) {
                 scene.setSnap(Math.max(1, (Integer)result));
             }
@@ -356,76 +434,10 @@ public class Editor extends Demo {
             }
             ui.addRow(5);
             ui.textField("Editor.scene.editor.background.color.field", 0, "Background", scene.getBackgroundColor(), resetSceneEditor, 20);
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.ao.strength.field", 0, "AO Strength", scene.getAOStrength(), resetSceneEditor, 10)) != null) {
-                scene.setAOStrength((Float)result);
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.ao.length.field", 0, "AO Length", scene.getAOLength(), resetSceneEditor, 10)) != null) {
-                scene.setAOLength((Float)result);
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.sample.radius.field", 0, "Sample Radius", scene.getSampleRadius(), resetSceneEditor, 10)) != null) {
-                scene.setSampleRadius((Float)result);
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.sample.count.field", 0, "Sample Count", scene.getSampleCount(), resetSceneEditor, 10)) != null) {
-                scene.setSampleCount((Integer)result);
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.lm.width.field", 0, "LM Width", scene.getLightMapWidth(), resetSceneEditor, 10)) != null) {
-                scene.setLightMapWidth(Math.max(64, Math.min(4096, (Integer)result)));
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.lm.height.field", 0, "LM Height", scene.getLightMapHeight(), resetSceneEditor, 10)) != null) {
-                scene.setLightMapHeight(Math.max(64, Math.min(4096, (Integer)result)));
-            }
-            ui.addRow(5);
-            if(ui.button("Editor.scene.lm.lambert.button", 0, "Light Map Lambert", scene.isLightMapLambert())) {
-                scene.setLightMapLambert(!scene.isLightMapLambert());
-            }
-            ui.addRow(5);
-            if(ui.button("Editor.scene.map.button", 0, "Map", false)) {
-                File mapFile = IO.file(sceneFile.getParentFile(), IO.fileNameWithOutExtension(sceneFile) + ".png");
-
-                lightMapper.map(scene, mapFile, true);
-            }
-            if(ui.button("Editor.scene.map.clear.button", 5, "Clear Map", false)) {
-                scene.getRoot().traverse((n) -> {
-                    n.setTexture2(null);
-                    return true;
-                });
-            }
-            Node node = scene.getRoot().find((n) -> {
-                Texture texture = n.getTexture2();
-                if(texture != null) {
-                    return true;
-                }
-                return false;
-            }, true);
-            boolean linear = (node == null) ? true : node.isTexture2Linear();
-            if(ui.button("Editor.scene.map.linear.button", 5, "Linear", linear)) {
-                scene.getRoot().traverse((n) -> {
-                    n.setTexture2Linear(!n.isTexture2Linear());
-                    return true;
-                });
-            }
             resetSceneEditor = false;
         } else if(editor == NODE_EDITOR) {
             Renderable renderable = selection.getRenderable();
 
-            if(resetNodeEditor) {
-                Texture matCap = selection.getMatCap();
-                
-                selMatCap = 0;
-                if(matCap != null) {
-                    if(matCap.getFile() != null) {
-                        selMatCap = matCapNames.indexOf(IO.fileNameWithOutExtension(matCap.getFile()));
-                    }
-                }
-            }
-
-            ui.addRow(5);
             if((result = ui.textField("Editor.node.editor.name.field", 0, "Name", selection.getName(), resetNodeEditor, 20)) != null) {
                 selection.setName((String)result);
             }
@@ -437,6 +449,19 @@ public class Editor extends Demo {
             ui.textField("Editor.node.editor.position.field", 0, "Position", selection.getPosition(), resetNodeEditor, 20);
             ui.addRow(5);
             ui.textField("Editor.node.editor.scale.field", 0, "Scale", selection.getScale(), resetNodeEditor, 20);
+            ui.addRow(5);
+                if(ui.button("Editor.node.clear.animator.button", 0, "Clear Animator", false)) {
+                    selection.setAnimator(scene, null);
+                }
+                if(ui.button("Editor.node.set.animator.button", 5, "Set Animator", false)) {
+                    Animator animator = selection.getAnimator();
+
+                    selAnimator = -1;
+                    if(animator != null) {
+                        selAnimator = animatorFiles.indexOf(animator.getFile());
+                    }
+                    editor = ANIMATOR;
+                }
             if(renderable != null) {
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.ambient.color.field", 0, "Ambient", selection.getAmbientColor(), resetNodeEditor, 20);
@@ -444,16 +469,6 @@ public class Editor extends Demo {
                 ui.textField("Editor.node.editor.diffuse.color.field", 0, "Diffuse", selection.getDiffuseColor(), resetNodeEditor, 20);
                 ui.addRow(5);
                 ui.textField("Editor.node.editor.color.field", 0, "Color", selection.getColor(), resetNodeEditor, 20);
-                ui.addRow(5);
-                if((result = ui.list("Editor.node.matcap.list", 0, matCapNames, 25, 4, selMatCap)) != null) {
-                    String name = matCapNames.get((Integer)result);
-
-                    if(name.equals("NONE")) {
-                        selection.setMatCap(null);
-                    } else {
-                        selection.setMatCap(game.getAssets().load(IO.file(IO.file("assets/matcap"), name + ".png")));
-                    }
-                }
                 ui.addRow(5);
                 if((result = ui.textField("Editor.node.editor.z.order.field", 0, "Z Order", selection.getZOrder(), resetNodeEditor, 10)) != null) {
                     selection.setZOrder((Integer)result);
@@ -485,16 +500,6 @@ public class Editor extends Demo {
                             return true;
                         });
                     }
-                }
-                ui.addRow(5);
-                if(ui.button("Editor.node.light.map.enabled.button", 0, "L Map", selection.isLightMapEnabled())) {
-                    selection.setLightMapEnabled(!selection.isLightMapEnabled());
-                }
-                if(ui.button("Editor.node.casts.shadow.button", 5, "C Shadow", selection.getCastsShadow())) {
-                    selection.setCastsShadow(!selection.getCastsShadow());
-                }
-                if(ui.button("Editor.node.receives.shadow.button", 5, "R Shadow", selection.getReceivesShadow())) {
-                    selection.setReceivesShadow(!selection.getReceivesShadow());
                 }
                 ui.addRow(5);
                 if(ui.button("Editor.node.editor.opaque.button", 0, "Opaque", selection.getBlendState() == BlendState.OPAQUE)) {
@@ -571,7 +576,6 @@ public class Editor extends Demo {
                     }
                 } 
             } else if(selection.isLight()) {
-                ui.addRow(5);
                 ui.textField("Editor.node.editor.light.color.field", 0, "Color", selection.getLightColor(), resetNodeEditor, 20);
                 ui.addRow(5);
                 if((result = ui.textField("Editor.node.editor.light.radius.field", 0, "Radius", selection.getLightRadius(), resetNodeEditor, 10)) != null) {
@@ -579,102 +583,33 @@ public class Editor extends Demo {
                 }
             } 
             resetNodeEditor = false;
-            selMatCap = -2;
         }
-        boolean handled = ui.end();
+        ui.end();
         renderer.end();
 
-        if(scene != null) {
-            if(!handled) {
-                if(game.isButtonDown(0)) {
-                    if(mode == ZOOM) {
-                        scene.getCamera().zoom(game.getDY());
-                    } else if(mode == ROT) {
-                        scene.getCamera().rotateAroundTarget(-game.getDX() * 0.025f, game.getDY() * 0.025f);
-                    } else if(mode == PANXZ) {
-                        scene.getCamera().move(scene.getCamera().getTarget(), game.getDX(), -game.getDY());
-                    } else if(mode == PANY) {
-                        scene.getCamera().move(scene.getCamera().getTarget(), -game.getDY());
-                    } else if(mode == SEL) {
-                        if(!down) {
-                            int w = game.getWidth();
-                            int x = game.getMouseX();
-                            int y = h - game.getMouseY() - 1;
+        if(loadSceneFile != null) {
+            File file = loadSceneFile;
 
-                            scene.getCamera().unProject(x, y, 0, 0, 0, w, h, origin);
-                            scene.getCamera().unProject(x, y, 1, 0, 0, w, h, direction);
-                            direction.sub(origin).normalize();
-                            time[0] = Float.MAX_VALUE;
-
-                            selection = null;
-
-                            scene.getRoot().traverse((n) -> {
-                                bounds.clear();
-                                bounds.add(origin);
-                                bounds.add(point.set(direction).mul(time[0]).add(origin));
-                                if(bounds.touches(n.getBounds())) {
-                                    for(int i = 0; i != n.getTriangleCount(); i++) {
-                                        n.getTriangle(i, triangle);
-                                        if(triangle.getNormal().dot(direction) < 0) {
-                                            if(triangle.intersects(origin, direction, 0, time)) {
-                                                selection = n;
-                                            }
-                                        }
-                                    }
-                                }
-                                if(n.isLight()) {
-                                    Node uiNode = scene.getUI();
-
-                                    uiNode.getPosition().set(n.getAbsolutePosition());
-                                    uiNode.getScale().set(2, 2, 2);
-                                    uiNode.calcBoundsAndTransform(scene.getCamera());
-                                    if(bounds.touches(uiNode.getBounds())) {
-                                        for(int i = 0; i != uiNode.getTriangleCount(); i++) {
-                                            uiNode.getTriangle(i, triangle);
-                                            if(triangle.getNormal().dot(direction) < 0) {
-                                                if(triangle.intersects(origin, direction, 0, time)) {
-                                                    selection = n;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                return true;
-                            });
-                            if(selection == null) {
-                                editor = -1;
-                            } else {
-                                editor = NODE_EDITOR;
-                                resetNodeEditor = true;
-                            }
-                        }
-                    } else if(selection != null) {
-                        if(mode == MOVXZ) {
-                            scene.getCamera().move(selection.getPosition(), game.getDX(), -game.getDY());
-                        } else if(mode == MOVY) {
-                            scene.getCamera().move(selection.getPosition(), -game.getDY());
-                        } else if(mode == ROTY && !selection.isLight()) {
-                            selection.getRotation().rotate(game.getDX() * 0.025f, 0, 1, 0);
-                        }
-                    }
-                    down = true;
-                } else {
-                    if(down && selection != null && (mode == MOVXZ || mode == MOVY)) {
-                        int snap = Math.max(1, scene.getSnap());
-                        Vector3f p = selection.getPosition();
-
-                        p.x = (int)Math.floor(p.x / snap) * snap;
-                        p.y = (int)Math.floor(p.y / snap) * snap;
-                        p.z = (int)Math.floor(p.z / snap) * snap;
-                    }
-                    down = false;
-                }
-            }
+            renderTarget = null;
+            game.getAssets().clear();
+            scene = null;
+            sceneFile = null;
+            scene = Scene.load(file);
+            scene.loadUI();
+            sceneFile = file;
+            selection = null;
+            clipboard = null;
+            editor = -1;
         }
+
+        if(scene != null) {
+            scene.updateAnimators();
+        }
+
         return !quit;
     }
     
-    private void popuplateRenderablesAndTextures(File directory) {
+    private void populateFileLists(File directory) {
         File[] files = directory.listFiles();
 
         if(files != null) {
@@ -690,12 +625,14 @@ public class Editor extends Demo {
                         extension.equals(".tex")
                     ) {
                         textureFiles.add(file);
+                    } else if(extension.equals(".ani")) {
+                        animatorFiles.add(file);
                     }
                 }
             }
             for(File file : files) {
                 if(file.isDirectory()) {
-                    popuplateRenderablesAndTextures(file);
+                    populateFileLists(file);
                 }
             }
         }
