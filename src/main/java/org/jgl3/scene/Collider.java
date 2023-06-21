@@ -183,26 +183,7 @@ public final class Collider {
         return hit;
     }
 
-    public Collider move(Scene scene, int speed) throws Exception {
-        Game game = Game.getInstance();
-
-        scene.getCamera().rotateAroundEye(-game.getDX() * 0.025f, game.getDY() * 0.025f);
-        scene.getCamera().getTarget().sub(scene.getCamera().getEye(), f).mul(1, 0, 1);
-        getVelocity().mul(0, 1, 0);
-        if((game.isButtonDown(0) || game.isButtonDown(1)) && f.length() > 0.0000001) {
-            f.normalize((game.isButtonDown(0)) ? speed : -speed);
-            getVelocity().add(f);
-        }
-        getPosition().set(scene.getCamera().getEye());
-        collide(scene.getRoot());
-        scene.getCamera().getTarget().sub(scene.getCamera().getEye(), f).normalize();
-        scene.getCamera().getEye().set(getPosition());
-        scene.getCamera().getEye().add(f, scene.getCamera().getTarget());
-
-        return this;
-    }
-
-    public boolean move(Scene scene, Node node, int speed, int jump, Sound jumpSound) throws Exception {
+    public boolean move(Scene scene, Node node, int speed, int jump, Sound jumpSound, int baseLength, int height) throws Exception {
         Game game = Game.getInstance();
         float dx = game.getMouseX() - game.getWidth() / 2;
         float dy = game.getMouseY() - game.getHeight() / 2;
@@ -265,6 +246,27 @@ public final class Collider {
         Vector3f offset = scene.getCamera().getOffset();
 
         scene.getCamera().getTarget().set(getPosition());
+
+        if(baseLength > 0 && height > 0) {
+            float length = baseLength;
+
+            getOrigin().set(getPosition());
+            getDirection().set(offset).mul(1, 0, 1).normalize();
+            setTime(baseLength + (getRadius() - 1));
+            if(intersect(scene.getRoot()) != null) {
+                length = Math.min(length, getTime()) - (getRadius() - 1);
+            }
+            offset.set(getDirection()).mul(length);
+            offset.y = height + (baseLength - length);
+            length = baseLength;
+            setTime(baseLength + (getRadius() - 1));
+            getDirection().set(offset).normalize();
+            if(intersect(scene.getRoot()) != null) {
+                length = Math.min(length, getTime()) - (getRadius() - 1);
+            }
+            offset.normalize(length);
+            scene.getCamera().getUp().set(0, 1, 0);
+        }
 
         getPosition().add(offset, scene.getCamera().getEye());
 

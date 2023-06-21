@@ -34,6 +34,8 @@ uniform mat4 uView;
 uniform mat4 uModel;
 uniform mat4 uModelIT;
 
+uniform int uTextureUnit;
+
 void main() {
     vec3 p = vsInPosition;
 
@@ -65,7 +67,23 @@ void main() {
             color += atten * lDotN *  uDiffuseColor * uLightColor[i];
         }
     }
-    fsInTextureCoordinate = vsInTextureCoordinate;
+
+    vec2 coord = vsInTextureCoordinate;
+
+    if(uTextureUnit > 0) {
+        vec3 n = abs(vsInNormal);
+        vec3 p = vsInPosition;
+
+        if(n.x >= n.y && n.x >= n.z) {
+            coord = vec2(p.z, p.y) / float(uTextureUnit);
+        } else if(n.y >= n.x && n.y >= n.z) {
+            coord = vec2(p.x, p.z) / float(uTextureUnit);
+        } else {
+            coord = vec2(p.x, p.y) / float(uTextureUnit);
+        }
+    }
+
+    fsInTextureCoordinate = coord;
     fsInTextureCoordinate2 = vsInTextureCoordinate2;
     fsInColor = color;
 

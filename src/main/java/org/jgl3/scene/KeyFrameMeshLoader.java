@@ -12,7 +12,7 @@ import org.jgl3.IO;
 public final class KeyFrameMeshLoader implements AssetLoader {
 
     public static void registerAssetLoader() {
-        Game.getInstance().getAssets().registerAssetLoader(".md2", 1, new KeyFrameMeshLoader());
+        Game.getInstance().getAssets().registerAssetLoader(".md2", Scene.ASSET_TAG, new KeyFrameMeshLoader());
     }
 
     @Override

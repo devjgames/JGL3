@@ -6,6 +6,7 @@ import java.util.Vector;
 import org.jgl3.Font;
 import org.jgl3.Game;
 import org.jgl3.IO;
+import org.jgl3.Log;
 import org.jgl3.PixelFormat;
 import org.jgl3.RenderTarget;
 import org.jgl3.Resource;
@@ -308,12 +309,21 @@ public final class UIManager extends Resource {
     }
 
     public RenderTarget beginView(String key, int gap, int width, int height, RenderTarget renderTarget, int anchorRight, int anchorBottom) throws Exception {
+        int s = game.getScale();
+
+        currentView = (UIView)keyedControls.get(key);
+
+        if(currentView == null) {
+            keyedControls.put(key, currentView = new UIView(this));
+        }
+
         if(renderTarget == null) {
-            renderTarget = game.getAssets().manage(new RenderTarget(width, height, PixelFormat.COLOR));
+            System.out.println("Creating view renderTarget ...");
+            renderTarget = game.getAssets().manage(new RenderTarget(width - s * 2, height - s * 2, PixelFormat.COLOR));
+            currentView.setSize(width, height);
         }
 
         Texture texture = renderTarget.getTexture(0);
-        int s = game.getScale();
 
         if(anchorRight >= 0 || anchorBottom >= 0) {
             int vx = lx + gap * s;
@@ -327,20 +337,17 @@ public final class UIManager extends Resource {
             if(anchorBottom >= 0) {
                 h -= anchorBottom * s;
             }
-            if(w > 50 && h > 50 && (w != texture.getWidth() || h != texture.getHeight())) {
+            if(w > 50 && h > 50 && (w != renderTarget.getWidth() + s * 2 || h != renderTarget.getHeight() + s * 2)) {
+                Log.put(2, "Resizing view render target ...");
                 game.getAssets().unManage(renderTarget);
-                renderTarget = game.getAssets().manage(new RenderTarget(w, h, PixelFormat.COLOR));
+                renderTarget = game.getAssets().manage(new RenderTarget(w - s * 2, h - s * 2, PixelFormat.COLOR));
                 texture = renderTarget.getTexture(0);
-                width = w;
-                height = h;
+                currentView.setSize(w, h);
             }
+        } else {
+            currentView.setSize(width, height);
         }
 
-        currentView = (UIView)keyedControls.get(key);
-
-        if(currentView == null) {
-            keyedControls.put(key, currentView = new UIView(this, width, height));
-        }
         currentView.setTexture(texture);
         lx += gap * s;
         currentView.setLocation(lx, ly);

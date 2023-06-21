@@ -16,14 +16,15 @@ import org.jgl3.AssetManager;;
 public class Mesh implements Renderable {
 
     public static void registerAssetLoader() {
-        Game.getInstance().getAssets().registerAssetLoader(".obj", 1, new Loader());
+        Game.getInstance().getAssets().registerAssetLoader(".msh", Scene.ASSET_TAG, new Loader());
     }
 
     private static class Loader implements AssetLoader {
 
         @Override
         public Object load(File file, AssetManager assets) throws Exception {
-            String[] lines = new String(IO.readAllBytes(file)).split("\\n+");
+            File objFile = IO.file(file.getParentFile(), new String(IO.readAllBytes(file)).trim());
+            String[] lines = new String(IO.readAllBytes(objFile)).split("\\n+");
             Vector<Vector3f> vList = new Vector<>();
             Vector<Vector2f> tList = new Vector<>();
             Vector<Vector3f> nList = new Vector<>();
@@ -91,13 +92,6 @@ public class Mesh implements Renderable {
     private final Vector<int[]> faces = new Vector<>();
     private float[] vertexArray = null;
     private final BoundingBox bounds = new BoundingBox();
-    private final Triangle triangle = new Triangle();
-    private final Vector3f p1 = new Vector3f();
-    private final Vector3f p2 = new Vector3f();
-    private final Vector3f p3 = new Vector3f();
-    private final Vector3f u = new Vector3f();
-    private final Vector3f v = new Vector3f();
-    private final Vector3f n = new Vector3f();
 
     public Mesh(File file) {
         this.file = file;
@@ -197,107 +191,6 @@ public class Mesh implements Renderable {
     public Mesh clearCompiledMesh() {
         vertexArray = null;
         return this;
-    }
-
-    public int intersectFace(Vector3f origin, Vector3f direction, float[] time) {
-        int hit = -1;
-
-        for(int i = 0; i != getFaceCount(); i++) {
-            for(int j = 0; j != getFaceVertexCount(i) - 2; j++) {
-                triangle.getP1().set(
-                    getVertexComponent(getFaceVertex(i, 0), 0),
-                    getVertexComponent(getFaceVertex(i, 0), 1),
-                    getVertexComponent(getFaceVertex(i, 0), 2)
-                );
-                triangle.getP2().set(
-                    getVertexComponent(getFaceVertex(i, j + 1), 0),
-                    getVertexComponent(getFaceVertex(i, j + 1), 1),
-                    getVertexComponent(getFaceVertex(i, j + 1), 2)
-                );
-                triangle.getP3().set(
-                    getVertexComponent(getFaceVertex(i, j + 2), 0),
-                    getVertexComponent(getFaceVertex(i, j + 2), 1),
-                    getVertexComponent(getFaceVertex(i, j + 2), 2)
-                );
-                triangle.calcPlane();
-                if(triangle.intersects(origin, direction, 0, time)) {
-                    hit = i;
-                }
-            }
-        }
-        return hit;
-    }
-
-    public void setDecalTexture2Coordinates(int face, float degrees) {
-        p1.set(
-            getVertexComponent(getFaceVertex(face, 0), 0),
-            getVertexComponent(getFaceVertex(face, 0), 1),
-            getVertexComponent(getFaceVertex(face, 0), 2)
-        );
-        p2.set(
-            getVertexComponent(getFaceVertex(face, 1), 0),
-            getVertexComponent(getFaceVertex(face, 1), 1),
-            getVertexComponent(getFaceVertex(face, 1), 2)
-        );
-        p3.set(
-            getVertexComponent(getFaceVertex(face, 2), 0),
-            getVertexComponent(getFaceVertex(face, 2), 1),
-            getVertexComponent(getFaceVertex(face, 2), 2)
-        );
-        p2.sub(p1, u).normalize();
-        p3.sub(p2, v).normalize();
-        u.cross(v, n).normalize();
-
-        float minX = Float.MAX_VALUE;
-        float minY = Float.MAX_VALUE;
-        float maxX = -minX;
-        float maxY = -minY;
-
-        u.cross(n, v).normalize();
-
-        for(int i = 0; i != getFaceVertexCount(face); i++) {
-            p1.set(
-                getVertexComponent(getFaceVertex(face, i), 0),
-                getVertexComponent(getFaceVertex(face, i), 1),
-                getVertexComponent(getFaceVertex(face, i), 2)
-            ); 
-            float x = u.dot(p1);
-            float y = v.dot(p1);
-
-            minX = Math.min(x, minX);
-            minY = Math.min(y, minY);
-            maxX = Math.max(x, maxX);
-            maxY = Math.max(y, maxY);
-        }
-
-        float w = maxX - minX;
-        float h = maxY - minY;
-
-        for(int i = 0; i != getFaceVertexCount(face); i++) {
-            p1.set(
-                getVertexComponent(getFaceVertex(face, i), 0),
-                getVertexComponent(getFaceVertex(face, i), 1),
-                getVertexComponent(getFaceVertex(face, i), 2)
-            ); 
-            float x = u.dot(p1);
-            float y = v.dot(p1);
-
-            x = (x - (maxX + minX) / 2) / w;
-            y = (y - (maxY + minY) / 2) / h;
-
-            float c = (float)Math.cos(Math.toRadians(degrees));
-            float s = (float)Math.sin(Math.toRadians(degrees));
-            float tx = c * x + s * y;
-            float ty = -s * x + c * y;
-
-            ty = -ty;
-
-            tx += 0.5f;
-            ty += 0.5f;
-
-            setVertexComponent(getFaceVertex(face, i), 5, tx);
-            setVertexComponent(getFaceVertex(face, i), 6, ty);
-        }
     }
 
     @Override

@@ -9,18 +9,12 @@ class UIView extends UIControl {
     private boolean down = false;
     private Texture texture = null;
 
-    public UIView(UIManager ui, int width, int height) {
-        super(
-            ui, 
-            width + 2 * Game.getInstance().getScale(), 
-            height + 2 * Game.getInstance().getScale()
-            );
+    public UIView(UIManager ui) {
+        super(ui, 0, 0);
     }
 
     public void setTexture(Texture texture) {
         this.texture = texture;
-
-        setSize(texture.getWidth() + 2 * Game.getInstance().getScale(), texture.getHeight() + 2 * Game.getInstance().getScale());
     }
 
     public boolean getDown() {

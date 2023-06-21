@@ -1,9 +1,13 @@
 package org.jgl3.scene;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Hashtable;
 import java.util.Vector;
 
+import org.jgl3.AssetLoader;
+import org.jgl3.AssetManager;
 import org.jgl3.BlendState;
 import org.jgl3.BoundingBox;
 import org.jgl3.CullState;
@@ -12,9 +16,11 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Log;
 import org.jgl3.OctTree;
+import org.jgl3.Renderer;
 import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -26,6 +32,127 @@ public final class Node implements Serializable {
         boolean visit(Node node) throws Exception;
     }
 
+    private static class NodeLoader implements AssetLoader {
+
+        @Override
+        public Object load(File file, AssetManager assets) throws Exception {
+            String[] lines = new String(IO.readAllBytes(file)).split("\\n+");
+            Vector<Vector3f> vList = new Vector<>();
+            Vector<Vector2f> tList = new Vector<>();
+            Vector<Vector3f> nList = new Vector<>();
+            Hashtable<String, Texture> textures = new Hashtable<>();
+            Node node = new Node();
+            Node mesh = new Node();
+
+            for (String line : lines) {
+                String tLine = line.trim();
+                String[] tokens = tLine.split("\\s+");
+
+                if(tLine.startsWith("mtllib ")) {
+                    File mFile = IO.file(file.getParentFile(), tLine.substring(6).trim());
+                    String[] mLines = new String(IO.readAllBytes(mFile)).split("\\n+");
+                    String mName = null;
+
+                    for(String mLine : mLines) {
+                        String tmLine = mLine.trim();
+                        
+                        if(tmLine.startsWith("newmtl ")) {
+                            mName = tmLine.substring(6).trim();
+                        } else if(tmLine.startsWith("map_Kd ")) {
+                            File tFile = IO.file(file.getParentFile(), tmLine.substring(6).trim());
+
+                            textures.put(mName, Game.getInstance().getAssets().load(tFile));
+                        }
+                    }
+                } else if(tLine.startsWith("usemtl ")) {
+                    String name = tLine.substring(6).trim();
+                    Texture texture = null;
+
+                    if(textures.containsKey(name)) {
+                        texture = textures.get(name);
+                        name = IO.fileNameWithOutExtension(texture.getFile());
+                    } else {
+                        name = "";
+                    }
+                    mesh = node.find(name, false);
+                    if(mesh == null) {
+                        mesh = new Node();
+                        mesh.setName(name);
+                        mesh.setTexture(texture);
+                        node.addChild(null, mesh);
+                    }
+                } else if (tLine.startsWith("v ")) {
+                    Vector3f v = new Vector3f(
+                        Float.parseFloat(tokens[1]),
+                        Float.parseFloat(tokens[2]),
+                        Float.parseFloat(tokens[3])
+                    );
+                    vList.add(v);
+                } else if (tLine.startsWith("vt ")) {
+                    Vector2f v = new Vector2f(
+                        Float.parseFloat(tokens[1]),
+                        1 - Float.parseFloat(tokens[2])
+                    );
+                    tList.add(v);
+                } else if (tLine.startsWith("vn ")) {
+                    Vector3f v = new Vector3f(
+                        Float.parseFloat(tokens[1]),
+                        Float.parseFloat(tokens[2]),
+                        Float.parseFloat(tokens[3])
+                    );
+                    nList.add(v);
+                } else if (tLine.startsWith("f ")) {
+                    if(mesh == null) {
+                        mesh = new Node();
+                        mesh.setName("");
+                        node.addChild(null, mesh);
+                    }
+                    int bV = mesh.getVertexCount();
+                    int[] indices = new int[tokens.length - 1];
+
+                    for (int i = 1; i != tokens.length; i++) {
+                        String[] iTokens = tokens[i].split("[/]+");
+                        int vI = Integer.parseInt(iTokens[0]) - 1;
+                        int tI = Integer.parseInt(iTokens[1]) - 1;
+                        int nI = Integer.parseInt(iTokens[2]) - 1;
+                        Vector3f v = vList.get(vI);
+                        Vector2f t = tList.get(tI);
+                        Vector3f n = nList.get(nI);
+
+                        mesh.push(
+                            v.x, v.y, v.z,
+                            t.x, t.y,
+                            0, 0,
+                            n.x, n.y, n.z,
+                            1, 1, 1, 1
+                        );
+
+                        indices[i - 1] = bV + i - 1;
+                    }
+                    mesh.push(indices);
+                }
+            }
+
+            if(node.getChildCount() == 1) {
+                node = node.getChild(0);
+                node.calcBounds();
+                node.compile();
+            } else {
+                for(int i = 0; i != node.getChildCount(); i++) {
+                    mesh = node.getChild(i);
+                    mesh.calcBounds();
+                    mesh.compile();
+                }
+            }
+            return node;
+        }
+    
+    }
+
+    public static void registerAssetLoader() {
+        Game.getInstance().getAssets().registerAssetLoader(".obj", Scene.ASSET_TAG, new NodeLoader());
+    }
+
     private String name = "Node";
     private String tag = "";
     private boolean visible = true;
@@ -33,6 +160,9 @@ public final class Node implements Serializable {
     private boolean dynamic = false;
     private boolean lightingEnabled = false;
     private boolean vertexColorEnabled = false;
+    private boolean lightMapEnabled = false;
+    private boolean castsShadow = false;
+    private boolean receivesShadow = true;
     private boolean isLight = false;
     private float lightRadius = 300;
     private DepthState depthState = DepthState.READWRITE;
@@ -69,6 +199,12 @@ public final class Node implements Serializable {
     private boolean texture2Linear = true;
     private boolean texture2ClampToEdge = true;
     private transient Animator animator = null;
+    private int textureUnit = 0;
+    private final Vector<Float> vertices = new Vector<>();
+    private final Vector<Integer> indices = new Vector<>();
+    private final Vector<int[]> faces = new Vector<>();
+    private float[] vertexArray = null;
+    private final BoundingBox meshBounds = new BoundingBox();
 
     public String getName() {
         return name;
@@ -130,6 +266,33 @@ public final class Node implements Serializable {
 
     public Node setVertexColorEnabled(boolean enabled) {
         vertexColorEnabled = enabled;
+        return this;
+    }
+
+    public boolean isLightMapEnabled() {
+        return lightMapEnabled;
+    }
+
+    public Node setLightMapEnabled(boolean enabled) {
+        lightMapEnabled = enabled;
+        return this;
+    }
+
+    public boolean getCastsShadow() {
+        return castsShadow;
+    }
+
+    public Node setCastsShadow(boolean castsShadow) {
+        this.castsShadow = castsShadow;
+        return this;
+    }
+
+    public boolean getReceivesShadow() {
+        return receivesShadow;
+    }
+
+    public Node setReceivesShadow(boolean receivesShadow) {
+        this.receivesShadow = receivesShadow;
         return this;
     }
 
@@ -245,7 +408,7 @@ public final class Node implements Serializable {
         return animator;
     }
 
-    public void setAnimator(Scene scene, Animator animator) throws Exception {
+    public Node setAnimator(Scene scene, Animator animator) throws Exception {
         if(animator != null) {
             animator = animator.newInstance();
             animator.init(scene, this);
@@ -253,6 +416,16 @@ public final class Node implements Serializable {
             this.animator.detach(scene, this);
         }
         this.animator = animator;
+        return this;
+    }
+
+    public int getTextureUnit() {
+        return textureUnit;
+    }
+
+    public Node setTextureUnit(int unit) {
+        textureUnit = unit;
+        return this;
     }
 
     public Renderable getRenderable() {
@@ -385,6 +558,146 @@ public final class Node implements Serializable {
         return this;
     }
 
+    public boolean hasMesh() {
+        return getVertexCount() != 0 && getIndexCount() != 0;
+    }
+
+    public int getVertexCount() {
+        return vertices.size() / Renderer.COMPONENTS;
+    }
+
+    public float getVertexComponent(int i, int j) {
+        return vertices.get(i * Renderer.COMPONENTS + j);
+    }
+
+    public Node setVertexComponent(int i, int j, float x) {
+        vertices.set(i * Renderer.COMPONENTS + j, x);
+        return this;
+    }
+
+    public Node calcBounds() {
+        meshBounds.clear();
+        for(int i = 0; i != getVertexCount(); i++) {
+            meshBounds.add(
+                getVertexComponent(i, 0),
+                getVertexComponent(i, 1),
+                getVertexComponent(i, 2)
+            );
+        }
+        return this;
+    }
+
+    public Node push(float x, float y, float z, float s, float t, float u, float v, float nx, float ny, float nz, float r, float g, float b, float a) {
+        vertices.add(x);
+        vertices.add(y);
+        vertices.add(z);
+        vertices.add(s);
+        vertices.add(t);
+        vertices.add(u);
+        vertices.add(v);
+        vertices.add(nx);
+        vertices.add(ny);
+        vertices.add(nz);
+        vertices.add(r);
+        vertices.add(g);
+        vertices.add(b);
+        vertices.add(a);
+
+        return this;
+    }
+
+    public int getIndexCount() {
+        return indices.size();
+    }
+
+    public int getIndex(int i) {
+        return indices.get(i);
+    }
+
+    public int getFaceCount() {
+        return faces.size();
+    }
+
+    public int getFaceVertexCount(int i) {
+        return faces.get(i).length;
+    }
+
+    public int getFaceVertex(int i, int j) {
+        return faces.get(i)[j];
+    }
+
+    public Node push(int ... indices) {
+        int tris = indices.length - 2;
+
+        faces.add(indices.clone());
+
+        for(int i = 0; i != tris; i++) {
+            this.indices.add(indices[0]);
+            this.indices.add(indices[i + 1]);
+            this.indices.add(indices[i + 2]);
+        }
+        return this;
+    }
+
+    public Node compile() {
+        if(hasMesh()) {
+            int v = 0;
+
+            vertexArray = new float[indices.size() * Renderer.COMPONENTS];
+
+            for(int i : indices) {
+                int j = i * Renderer.COMPONENTS;
+
+                for(int k = 0;  k != Renderer.COMPONENTS; k++, j++, v++) {
+                    vertexArray[v] = vertices.get(j);
+                }
+            }
+        }
+        return this;
+    }
+
+    public Node clearCompiledMesh() {
+        vertexArray = null;
+        return this;
+    }
+
+    public void render(Scene scene) throws Exception {
+        if(hasMesh()) {
+            Renderer renderer = Game.getInstance().getRenderer();
+
+            if(vertexArray != null) {
+                renderer.render(vertexArray);
+            } else {
+                renderer.beginTriangles();
+                for(int i : indices) {
+                    int j = i * Renderer.COMPONENTS;
+
+                    renderer.push(
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++),
+                        vertices.get(j++)
+                    );
+                }
+                renderer.endTriangles();
+            }
+        } else {
+            Renderable renderable = getRenderable();
+
+            renderable.render(scene, this);
+        }
+    }
+
     public Node calcBoundsAndTransform(Camera camera) {
         if(followEye && camera != null) {
             position.set(camera.getEye());
@@ -399,7 +712,9 @@ public final class Node implements Serializable {
         }
         absolutePosition.zero().mulPosition(model);
         bounds.clear();
-        if(renderable != null) {
+        if(hasMesh()) {
+            bounds.set(meshBounds);
+        } else if(renderable != null) {
             bounds.set(renderable.getBounds());
         }
         bounds.transform(model);
@@ -454,14 +769,38 @@ public final class Node implements Serializable {
     public int getTriangleCount() {
         int count = 0;
 
-        if(renderable != null) {
+        if(hasMesh()) {
+            return getIndexCount() / 3;
+        } else if(renderable != null) {
             count = renderable.getTriangleCount();
         }
         return count;
     }
 
     public Triangle getTriangle(int i, Triangle triangle) {
-        if(renderable != null) {
+        if(hasMesh()) {
+            i *= 3;
+            triangle.getP1().set(
+                getVertexComponent(getIndex(i + 0), 0),
+                getVertexComponent(getIndex(i + 0), 1),
+                getVertexComponent(getIndex(i + 0), 2)
+            );
+            triangle.getP2().set(
+                getVertexComponent(getIndex(i + 1), 0),
+                getVertexComponent(getIndex(i + 1), 1),
+                getVertexComponent(getIndex(i + 1), 2)
+            );
+            triangle.getP3().set(
+                getVertexComponent(getIndex(i + 2), 0),
+                getVertexComponent(getIndex(i + 2), 1),
+                getVertexComponent(getIndex(i + 2), 2)
+            );
+            triangle
+                .calcPlane()
+                .setTag(triangleTag)
+                .transform(model)
+                .setData(this);
+        } else if(renderable != null) {
             renderable
                 .getTriangle(i, triangle)
                 .setTag(triangleTag)
@@ -472,7 +811,7 @@ public final class Node implements Serializable {
     }
 
     public OctTree getOctTree() {
-        if(collidable && !dynamic && octTree == null && renderable != null) {
+        if(collidable && !dynamic && octTree == null && (renderable != null || hasMesh())) {
             Vector<Triangle> triangles = new Vector<>();
 
             Log.put(1, "Creating OctTree ...");

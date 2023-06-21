@@ -8,7 +8,10 @@ import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMeshLoader;
+import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Mesh;
+import org.jgl3.scene.Node;
+import org.jgl3.scene.ParticleSystem;
 import org.jgl3.ui.UIManager;
 
 public class App {
@@ -78,16 +81,19 @@ public class App {
     }
 
     protected void registerAssetLoaders() {
+        Node.registerAssetLoader();
         Mesh.registerAssetLoader();
         KeyFrameMeshLoader.registerAssetLoader();
+        ParticleSystem.registerAssetLoader();
         Animator.registerAssetLoader();
     }
 
     public static void main(String[] args) throws Exception {
-        new App(1000, 700, true,
-            new Editor(),
-            new Player(IO.file("assets/scenes/scene1.scn")),
-            new Player(IO.file("assets/scenes/scene2.scn"))
+        LightMapper lightMapper = new LightMapper();
+
+        new App(1200, 700, true,
+            new Editor(lightMapper),
+            new Player(IO.file("assets/scenes/map1.scn"), lightMapper)
         );
     }
 }

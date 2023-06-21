@@ -19,7 +19,7 @@ public class Hero extends Animator {
     private final Vector3f start = new Vector3f();
     private final Vector3f startOffset = new Vector3f();
     private int jump;
-    private float offsetLength;
+    private int baseLength, height;
 
     public Hero() throws Exception {
         collider.setContactListener((tri) -> {
@@ -38,7 +38,8 @@ public class Hero extends Animator {
         Game game = Game.getInstance();
 
         jump = Integer.parseInt(getToken(1));
-        offsetLength = Integer.parseInt(getToken(2));
+        baseLength = Integer.parseInt(getToken(2));
+        height = Integer.parseInt(getToken(3));
 
         mesh = (KeyFrameMesh)node.getChild(0).getRenderable();
         start.set(node.getPosition());
@@ -49,10 +50,12 @@ public class Hero extends Animator {
 
         Vector3f offset = scene.getCamera().getOffset();
 
-        offset.normalize(offsetLength);
+        offset.mul(1, 0, 1).normalize(baseLength);
+        offset.y = height;
         startOffset.set(offset);
         scene.getCamera().getTarget().set(start);
         scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());
+        scene.getCamera().getUp().set(0, 1, 0);
 
         dead = false;
     }
@@ -71,7 +74,7 @@ public class Hero extends Animator {
                 dead = false;
             }
         } else {
-            collider.move(scene, node, 100, jump, jumpSound);
+            collider.move(scene, node, 100, jump, jumpSound, baseLength, height);
 
             Demo demo = App.getDemo();
 

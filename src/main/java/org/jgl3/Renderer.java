@@ -24,6 +24,7 @@ public final class Renderer extends Resource {
     private final int uTexture, uTextureEnabled;
     private final int uTexture2, uTexture2Enabled;
     private final int uLayerColor;
+    private final int uTextureUnit;
     private final Matrix4f temp = new Matrix4f();
     private FloatBuffer vBuf = BufferUtils.createFloatBuffer(COMPONENTS * 3);
     private Texture texture = null;
@@ -65,6 +66,7 @@ public final class Renderer extends Resource {
         uTexture2 = pipeline.getUniform("uTexture2");
         uTexture2Enabled = pipeline.getUniform("uTexture2Enabled");
         uLayerColor = pipeline.getUniform("uLayerColor");
+        uTextureUnit = pipeline.getUniform("uTextureUnit");
     }
 
     public void begin() throws Exception {
@@ -86,9 +88,14 @@ public final class Renderer extends Resource {
         setModel(temp);
         setTexture(null);
         setTexture2(null);
+        setTextureUnit(0);
 
         texture = null;
         font = null;
+    }
+
+    public void setTextureUnit(int unit) {
+        pipeline.set(uTextureUnit, unit);
     }
 
     public void setLightPosition(int i, float x, float y, float z) {
@@ -225,6 +232,7 @@ public final class Renderer extends Resource {
         setTexture2(null);
         setWarp(false);
         setColor(1, 1, 1, 1);
+        setTextureUnit(0);
         font = null;
 
         GFX.setDepthState(DepthState.NONE);

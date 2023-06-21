@@ -22,6 +22,8 @@ public final class Scene implements Serializable {
 
     private static final long serialVersionUID = 1234567L;
 
+    public static final int ASSET_TAG = 1;
+
     private static final Vector<Node> renderables = new Vector<>();
     private static final Vector<Node> lights = new Vector<>();
     
@@ -39,6 +41,13 @@ public final class Scene implements Serializable {
     private CullState lastCullState = null;
     private BlendState lastBlendState = null;
     private transient Scene me;
+    private float aoStrength = 2;
+    private float aoLength = 32;
+    private float sampleRadius = 32;
+    private int sampleCount = 64;
+    private int lightMapWidth = 128;
+    private int lightMapHeight = 128;
+    private boolean lightMapLambert = true;
 
     public Scene() {
         me = this;
@@ -54,6 +63,69 @@ public final class Scene implements Serializable {
 
     public int getCollidableTriangles() {
         return collidableTriangles;
+    }
+
+   public float getAOStrength() {
+        return aoStrength;
+    }
+
+    public Scene setAOStrength(float strength) {
+        aoStrength = strength;
+        return this;
+    }
+
+    public float getAOLength() {
+        return aoLength;
+    }
+
+    public Scene setAOLength(float length) {
+        aoLength = length;
+        return this;
+    }
+
+    public float getSampleRadius() {
+        return sampleRadius;
+    }
+
+    public Scene setSampleRadius(float radius) {
+        this.sampleRadius = radius;
+        return this;
+    }
+
+    public int getSampleCount() {
+        return sampleCount;
+    }
+
+    public Scene setSampleCount(int count) {
+        sampleCount = count;
+        return this;
+    }
+
+    public int getLightMapWidth() {
+        return lightMapWidth;
+    }
+
+    public Scene setLightMapWidth(int width) {
+        lightMapWidth = width;
+        return this;
+    }
+
+    public int getLightMapHeight() {
+        return lightMapHeight;
+    }
+
+    public Scene setLightMapHeight(int height) {
+        lightMapHeight = height;
+        return this;
+    }
+
+    public boolean isLightMapLambert() {
+        return lightMapLambert;
+    }
+
+    public Scene setLightMapLambert(boolean lambert) {
+        lightMapLambert = lambert;
+        return this;
     }
 
     public boolean getDrawLights() {
@@ -97,9 +169,7 @@ public final class Scene implements Serializable {
 
     public Scene loadUI() throws Exception {
         Log.put(1, "Loading ui node ...");
-        ui = new Node();
-        ui.setRenderable(Game.getInstance().getAssets().load(IO.file("assets/ui/ui.obj")));
-        ui.setTexture(Game.getInstance().getAssets().load(IO.file("assets/ui/colors.png")));
+        ui = Game.getInstance().getAssets().load(IO.file("assets/ui/ui.obj"));
         ui.getTexture().toLinear(true);
         return this;
     }
@@ -137,17 +207,19 @@ public final class Scene implements Serializable {
         root.traverse((n) -> {
             Renderable renderable = n.getRenderable();
 
+            if(renderable != null) {
+                renderable.update(this, n);
+            }
+
             if(n.isVisible()) {
-                if(renderable != null) {
-                    renderable.update(this, n);
+                if(n.hasMesh() || renderable != null) {
                     if(camera.getFrustum().testAab(n.getBounds().getMin(), n.getBounds().getMax())) {
+                        if(n.isCollidable()) {
+                            collidableTriangles += n.getTriangleCount();
+                        }
                         renderables.add(n);
                     }
-                    if(n.isCollidable()) {
-                        collidableTriangles += renderable.getTriangleCount();
-                    }
                 }
-
                 if(n.isLight()) {
                     lights.add(n);
                 }
@@ -222,6 +294,7 @@ public final class Scene implements Serializable {
         renderer.setTexture(null);
         renderer.setLayerColor(0, 0, 0, 0);
         renderer.setWarp(false);
+        renderer.setTextureUnit(0);
 
         GFX.setDepthState(lastDepthState = DepthState.READWRITE);
         GFX.setBlendState(lastBlendState = BlendState.OPAQUE);
@@ -236,7 +309,7 @@ public final class Scene implements Serializable {
                     ui.getPosition().set(light.getAbsolutePosition());
                     ui.calcBoundsAndTransform(camera);
                     renderer.setModel(ui.getModel());
-                    ui.getRenderable().render(this, ui);
+                    ui.render(this);
                 }
             }
             if(drawAxis) {
@@ -246,7 +319,7 @@ public final class Scene implements Serializable {
                 ui.getPosition().set(camera.getTarget());
                 ui.calcBoundsAndTransform(camera);
                 renderer.setModel(ui.getModel());
-                ui.getRenderable().render(this, ui);
+                ui.render(this);
             }
         }
 
@@ -272,6 +345,7 @@ public final class Scene implements Serializable {
         renderer.setWarpAmplitude(renderable.getWarpAmplitude());
         renderer.setWarpTime(game.getTotalTime() * renderable.getWarpSpeed());
         renderer.setWarpFrequency(renderable.getWarpFrequency());
+        renderer.setTextureUnit(renderable.getTextureUnit());
 
         if(lastDepthState != renderable.getDepthState()) {
             GFX.setDepthState(lastDepthState = renderable.getDepthState());
@@ -283,7 +357,7 @@ public final class Scene implements Serializable {
             GFX.setBlendState(lastBlendState = renderable.getBlendState());
         }
 
-        renderable.getRenderable().render(this, renderable);
+        renderable.render(this);
         trianglesRendered += renderable.getTriangleCount();
         nodesRendered++;
     }
@@ -317,7 +391,7 @@ public final class Scene implements Serializable {
         }
     }
 
-    public static Scene load(File file) throws Exception {
+    public static Scene load(File file, LightMapper lightMapper) throws Exception {
         ObjectInputStream input = null;
         Scene scene = null;
 
@@ -326,6 +400,8 @@ public final class Scene implements Serializable {
             scene = (Scene)input.readObject();
             scene.me = scene;
             scene.initAnimators();
+
+            lightMapper.map(scene, IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png"), false);
         } finally {
             if(input != null) {
                 input.close();
