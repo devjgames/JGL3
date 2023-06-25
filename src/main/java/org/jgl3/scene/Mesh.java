@@ -16,70 +16,91 @@ import org.jgl3.AssetManager;;
 public class Mesh implements Renderable {
 
     public static void registerAssetLoader() {
-        Game.getInstance().getAssets().registerAssetLoader(".msh", Scene.ASSET_TAG, new Loader());
+        Game.getInstance().getAssets().registerAssetLoader(".obj", Scene.ASSET_TAG, new Loader());
+    }
+
+    public static Mesh load(File file) throws Exception {
+        String[] lines = new String(IO.readAllBytes(file)).split("\\n+");
+        Vector<Vector3f> vList = new Vector<>();
+        Vector<Vector2f> tList = new Vector<>();
+        Vector<Vector3f> nList = new Vector<>();
+        Mesh mesh = new Mesh(file);
+
+        for (String line : lines) {
+            String tLine = line.trim();
+            String[] tokens = tLine.split("\\s+");
+            if (tLine.startsWith("v ")) {
+                Vector3f v = new Vector3f(
+                    Float.parseFloat(tokens[1]),
+                    Float.parseFloat(tokens[2]),
+                    Float.parseFloat(tokens[3])
+                );
+                vList.add(v);
+            } else if (tLine.startsWith("vt ")) {
+                Vector2f v = new Vector2f(
+                    Float.parseFloat(tokens[1]),
+                    1 - Float.parseFloat(tokens[2])
+                );
+                tList.add(v);
+            } else if (tLine.startsWith("vn ")) {
+                Vector3f v = new Vector3f(
+                    Float.parseFloat(tokens[1]),
+                    Float.parseFloat(tokens[2]),
+                    Float.parseFloat(tokens[3])
+                );
+                nList.add(v);
+            } else if (tLine.startsWith("f ")) {
+                int bV = mesh.getVertexCount();
+                int[] indices = new int[tokens.length - 1];
+
+                for (int i = 1; i != tokens.length; i++) {
+                    String[] iTokens = tokens[i].split("[/]+");
+                    int vI = Integer.parseInt(iTokens[0]) - 1;
+                    int tI = Integer.parseInt(iTokens[1]) - 1;
+                    int nI = Integer.parseInt(iTokens[2]) - 1;
+                    Vector3f v = vList.get(vI);
+                    Vector2f t = tList.get(tI);
+                    Vector3f n = nList.get(nI);
+
+                    mesh.push(
+                        v.x, v.y, v.z,
+                        t.x, t.y,
+                        0, 0,
+                        n.x, n.y, n.z,
+                        1, 1, 1, 1
+                    );
+
+                    indices[i - 1] = bV + i - 1;
+                }
+                mesh.push(indices);
+            }
+        }
+        return mesh;
     }
 
     private static class Loader implements AssetLoader {
 
         @Override
         public Object load(File file, AssetManager assets) throws Exception {
-            File objFile = IO.file(file.getParentFile(), new String(IO.readAllBytes(file)).trim());
-            String[] lines = new String(IO.readAllBytes(objFile)).split("\\n+");
-            Vector<Vector3f> vList = new Vector<>();
-            Vector<Vector2f> tList = new Vector<>();
-            Vector<Vector3f> nList = new Vector<>();
-            Mesh mesh = new Mesh(file);
+            Mesh mesh = Mesh.load(file);
 
-            for (String line : lines) {
-                String tLine = line.trim();
-                String[] tokens = tLine.split("\\s+");
-                if (tLine.startsWith("v ")) {
-                    Vector3f v = new Vector3f(
-                        Float.parseFloat(tokens[1]),
-                        Float.parseFloat(tokens[2]),
-                        Float.parseFloat(tokens[3])
-                    );
-                    vList.add(v);
-                } else if (tLine.startsWith("vt ")) {
-                    Vector2f v = new Vector2f(
-                        Float.parseFloat(tokens[1]),
-                        1 - Float.parseFloat(tokens[2])
-                    );
-                    tList.add(v);
-                } else if (tLine.startsWith("vn ")) {
-                    Vector3f v = new Vector3f(
-                        Float.parseFloat(tokens[1]),
-                        Float.parseFloat(tokens[2]),
-                        Float.parseFloat(tokens[3])
-                    );
-                    nList.add(v);
-                } else if (tLine.startsWith("f ")) {
-                    int bV = mesh.getVertexCount();
-                    int[] indices = new int[tokens.length - 1];
-
-                    for (int i = 1; i != tokens.length; i++) {
-                        String[] iTokens = tokens[i].split("[/]+");
-                        int vI = Integer.parseInt(iTokens[0]) - 1;
-                        int tI = Integer.parseInt(iTokens[1]) - 1;
-                        int nI = Integer.parseInt(iTokens[2]) - 1;
-                        Vector3f v = vList.get(vI);
-                        Vector2f t = tList.get(tI);
-                        Vector3f n = nList.get(nI);
-
-                        mesh.push(
-                            v.x, v.y, v.z,
-                            t.x, t.y,
-                            0, 0,
-                            n.x, n.y, n.z,
-                            1, 1, 1, 1
-                        );
-
-                        indices[i - 1] = bV + i - 1;
-                    }
-                    mesh.push(indices);
-                }
-            }
             mesh.calcBounds();
+
+            Vector3f c = mesh.getBounds().getCenter(new Vector3f());
+            Vector3f m = mesh.getBounds().getMin();
+
+            for(int i = 0; i != mesh.getVertexCount(); i++) {
+                float x = mesh.getVertexComponent(i, 0) - c.x;
+                float y = mesh.getVertexComponent(i, 1) - m.y;
+                float z = mesh.getVertexComponent(i, 2) - c.z;
+
+                mesh.setVertexComponent(i, 0, x);
+                mesh.setVertexComponent(i, 1, y);
+                mesh.setVertexComponent(i, 2, z);
+            }
+          
+            mesh.calcBounds();
+
             mesh.compileMesh();
 
             return mesh;

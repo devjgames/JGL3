@@ -1,6 +1,6 @@
 #version 150
 
-#define MAX_LIGHTS 8
+#define MAX_LIGHTS 16
 
 in vec3 vsInPosition;
 in vec2 vsInTextureCoordinate;
@@ -41,10 +41,11 @@ void main() {
 
     if(uWarp != 0) {
         float f = uWarpFrequency;
+        vec3 b = p;
 
-        p.x += uWarpAmplitude.x * sin(f * p.z + uWarpTime) * cos(f * p.y + uWarpTime);
-        p.y += uWarpAmplitude.y * cos(f * p.x + uWarpTime) * sin(f * p.z + uWarpTime);
-        p.z += uWarpAmplitude.z * sin(f * p.x + uWarpTime) * cos(f * p.y + uWarpTime);
+        p.x = b.x + uWarpAmplitude.x * sin(f * b.z + uWarpTime) * cos(f * b.y + uWarpTime);
+        p.y = b.y + uWarpAmplitude.y * cos(f * b.x + uWarpTime) * sin(f * b.z + uWarpTime);
+        p.z = b.z + uWarpAmplitude.z * sin(f * b.y + uWarpTime) * cos(f * b.x + uWarpTime);
     }
 
     vec4 position = uModel * vec4(p, 1.0);

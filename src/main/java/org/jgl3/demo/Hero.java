@@ -41,6 +41,8 @@ public class Hero extends Animator {
         baseLength = Integer.parseInt(getToken(2));
         height = Integer.parseInt(getToken(3));
 
+        collider.setGroundSlope(Integer.parseInt(getToken(4)));
+
         mesh = (KeyFrameMesh)node.getChild(0).getRenderable();
         start.set(node.getPosition());
         jumpSound = game.getAssets().load(IO.file("assets/sound/jump.wav"));
@@ -50,8 +52,10 @@ public class Hero extends Animator {
 
         Vector3f offset = scene.getCamera().getOffset();
 
-        offset.mul(1, 0, 1).normalize(baseLength);
-        offset.y = height;
+        if(baseLength > 0 && height > 0) {
+            offset.mul(1, 0, 1).normalize(baseLength);
+            offset.y = height;
+        } 
         startOffset.set(offset);
         scene.getCamera().getTarget().set(start);
         scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());

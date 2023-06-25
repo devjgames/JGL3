@@ -318,7 +318,7 @@ public final class UIManager extends Resource {
         }
 
         if(renderTarget == null) {
-            System.out.println("Creating view renderTarget ...");
+            Log.put(2, "Creating view renderTarget ...");
             renderTarget = game.getAssets().manage(new RenderTarget(width - s * 2, height - s * 2, PixelFormat.COLOR));
             currentView.setSize(width, height);
         }

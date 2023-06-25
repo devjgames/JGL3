@@ -7,7 +7,6 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.Resource;
-import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Scene;
 import org.lwjgl.glfw.GLFW;
 
@@ -16,11 +15,9 @@ public class Player extends Demo {
     private final File file;
     private Scene scene = null;
     private int tested = 0;
-    private final LightMapper lightMapper;
 
-    public Player(File file, LightMapper lightMapper) {
+    public Player(File file) {
         this.file = file;
-        this.lightMapper = lightMapper;
     }
 
     public void setTested(int tested) {
@@ -29,7 +26,7 @@ public class Player extends Demo {
 
     @Override
     public void init() throws Exception {
-        scene = Scene.load(file, lightMapper);
+        scene = Scene.load(file);
 
         tested = 0;
     }

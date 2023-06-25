@@ -9,7 +9,7 @@ import org.lwjgl.BufferUtils;
 
 public final class Renderer extends Resource {
 
-    public static final int MAX_LIGHTS = 8;
+    public static final int MAX_LIGHTS = 16;
     public static final int COMPONENTS = 14;
     
     private final Pipeline pipeline;

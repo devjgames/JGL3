@@ -31,7 +31,10 @@ class UIView extends UIControl {
 
     @Override
     public void onPushRects() {
+        int s = Game.getInstance().getScale();
+
         getUI().pushRect(getX(), getY(), getWidth(), getHeight(), UIManager.FOREGROUND);
+        getUI().pushRect(getX() + s, getY() + s, getWidth() - s * 2, getHeight() - s * 2, 0, 0, 0, 1);
     }
 
     @Override

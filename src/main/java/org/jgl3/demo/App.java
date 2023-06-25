@@ -8,9 +8,7 @@ import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMeshLoader;
-import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Mesh;
-import org.jgl3.scene.Node;
 import org.jgl3.scene.ParticleSystem;
 import org.jgl3.ui.UIManager;
 
@@ -81,7 +79,6 @@ public class App {
     }
 
     protected void registerAssetLoaders() {
-        Node.registerAssetLoader();
         Mesh.registerAssetLoader();
         KeyFrameMeshLoader.registerAssetLoader();
         ParticleSystem.registerAssetLoader();
@@ -89,11 +86,9 @@ public class App {
     }
 
     public static void main(String[] args) throws Exception {
-        LightMapper lightMapper = new LightMapper();
-
         new App(1200, 700, true,
-            new Editor(lightMapper),
-            new Player(IO.file("assets/scenes/map1.scn"), lightMapper)
+            new Editor(),
+            new Player(IO.file("assets/scenes/scene1.scn"))
         );
     }
 }

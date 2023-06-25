@@ -21,18 +21,15 @@ import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMesh;
-import org.jgl3.scene.LightMapper;
+import org.jgl3.scene.Mesh;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
 import org.jgl3.ui.UIManager;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 public class Editor extends Demo {
-
-    public static interface Process {
-        void process(Scene scene) throws Exception;
-    }
 
     private static final int ZOOM = 0;
     private static final int ROT = 1;
@@ -87,14 +84,11 @@ public class Editor extends Demo {
     private final Vector3f point = new Vector3f();
     private final float[] time = new float[1];
     private final BoundingBox bounds = new BoundingBox();
+    private final BoundingBox uiBounds = new BoundingBox();
+    private final Matrix4f matrix = new Matrix4f();
     private final Triangle triangle = new Triangle();
     private Node clipboard = null;
     private RenderTarget renderTarget = null;
-    private final LightMapper lightMapper;
-
-    public Editor(LightMapper lightMapper) {
-        this.lightMapper = lightMapper;
-    }
 
     @Override
     public void init() throws Exception {
@@ -263,14 +257,14 @@ public class Editor extends Demo {
                                 }
                             }
                             if(n.isLight()) {
-                                Node uiNode = scene.getUI();
+                                Mesh uiMesh = scene.getUI();
 
-                                uiNode.getPosition().set(n.getAbsolutePosition());
-                                uiNode.getScale().set(2, 2, 2);
-                                uiNode.calcBoundsAndTransform(scene.getCamera());
-                                if(bounds.touches(uiNode.getBounds())) {
-                                    for(int i = 0; i != uiNode.getTriangleCount(); i++) {
-                                        uiNode.getTriangle(i, triangle);
+                                matrix.identity().translate(n.getAbsolutePosition()).scale(2, 2, 2);
+                                uiBounds.set(uiMesh.getBounds()).transform(matrix);
+
+                                if(bounds.touches(uiBounds)) {
+                                    for(int i = 0; i != uiMesh.getTriangleCount(); i++) {
+                                        uiMesh.getTriangle(i, triangle).transform(matrix);
                                         if(triangle.getNormal().dot(direction) < 0) {
                                             if(triangle.intersects(origin, direction, 0, time)) {
                                                 selection = n;
@@ -300,12 +294,15 @@ public class Editor extends Demo {
                 down = true;
             } else {
                 if(down && selection != null && (mode == MOVXZ || mode == MOVY)) {
-                    int snap = Math.max(1, scene.getSnap());
-                    Vector3f p = selection.getPosition();
+                    int snap = Math.max(0, scene.getSnap());
 
-                    p.x = (int)Math.floor(p.x / snap) * snap;
-                    p.y = (int)Math.floor(p.y / snap) * snap;
-                    p.z = (int)Math.floor(p.z / snap) * snap;
+                    if(snap > 0) {
+                        Vector3f p = selection.getPosition();
+
+                        p.x = (int)Math.floor(p.x / snap) * snap;
+                        p.y = (int)Math.floor(p.y / snap) * snap;
+                        p.z = (int)Math.floor(p.z / snap) * snap;
+                    }
                 }
                 down = false;
             }
@@ -401,7 +398,6 @@ public class Editor extends Demo {
 
                 if(asset instanceof Node) {
                     node = copy((Node)asset);
-                    System.out.println(node == asset);
                 } else {
                     File textureFile = IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png");
 
@@ -409,6 +405,9 @@ public class Editor extends Demo {
 
                     node.setRenderable(game.getAssets().load(file));
                     node.setRenderable(node.getRenderable().newInstance());
+                    if(node.getRenderable() instanceof Mesh) {
+                        node.setCollidable(true);
+                    }
                     if(textureFile.exists()) {
                         node.setTexture(game.getAssets().load(textureFile));
                     } else {
@@ -418,8 +417,7 @@ public class Editor extends Demo {
                         }
                     }
                     if(node.getTexture() != null) {
-                        node.getTexture().toLinear(false);
-                        node.setTextureLinear(true);
+                        node.setTextureLinear(false);
                         node.setClampTextureToEdge(false);
                     }
                     if(IO.extension(file).equals(".md2")) {
@@ -444,7 +442,7 @@ public class Editor extends Demo {
             selRenderable = -2;
         } else if(editor == SCENE_EDITOR) {
             if((result = ui.textField("Editor.scene.editor.snap.field", 0, "Snap", scene.getSnap(), resetSceneEditor, 6)) != null) {
-                scene.setSnap(Math.max(1, (Integer)result));
+                scene.setSnap(Math.max(0, (Integer)result));
             }
             ui.addRow(5);
             if(ui.button("Editor.scene.editor.draw.lights.button", 0, "Draw Lights", scene.getDrawLights())) {
@@ -455,60 +453,6 @@ public class Editor extends Demo {
             }
             ui.addRow(5);
             ui.textField("Editor.scene.editor.background.color.field", 0, "Background", scene.getBackgroundColor(), resetSceneEditor, 20);
-           ui.addRow(5);
-            if((result = ui.textField("Editor.scene.ao.strength.field", 0, "AO Strength", scene.getAOStrength(), resetSceneEditor, 10)) != null) {
-                scene.setAOStrength((Float)result);
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.ao.length.field", 0, "AO Length", scene.getAOLength(), resetSceneEditor, 10)) != null) {
-                scene.setAOLength((Float)result);
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.sample.radius.field", 0, "Sample Radius", scene.getSampleRadius(), resetSceneEditor, 10)) != null) {
-                scene.setSampleRadius((Float)result);
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.sample.count.field", 0, "Sample Count", scene.getSampleCount(), resetSceneEditor, 10)) != null) {
-                scene.setSampleCount((Integer)result);
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.lm.width.field", 0, "LM Width", scene.getLightMapWidth(), resetSceneEditor, 10)) != null) {
-                scene.setLightMapWidth(Math.max(64, Math.min(4096, (Integer)result)));
-            }
-            ui.addRow(5);
-            if((result = ui.textField("Editor.scene.lm.height.field", 0, "LM Height", scene.getLightMapHeight(), resetSceneEditor, 10)) != null) {
-                scene.setLightMapHeight(Math.max(64, Math.min(4096, (Integer)result)));
-            }
-            ui.addRow(5);
-            if(ui.button("Editor.scene.lm.lambert.button", 0, "Light Map Lambert", scene.isLightMapLambert())) {
-                scene.setLightMapLambert(!scene.isLightMapLambert());
-            }
-            ui.addRow(5);
-            if(ui.button("Editor.scene.map.button", 0, "Map", false)) {
-                File mapFile = IO.file(sceneFile.getParentFile(), IO.fileNameWithOutExtension(sceneFile) + ".png");
-
-                lightMapper.map(scene, mapFile, true);
-            }
-            if(ui.button("Editor.scene.map.clear.button", 5, "Clear Map", false)) {
-                scene.getRoot().traverse((n) -> {
-                    n.setTexture2(null);
-                    return true;
-                });
-            }
-            Node node = scene.getRoot().find((n) -> {
-                Texture texture = n.getTexture2();
-                if(texture != null) {
-                    return true;
-                }
-                return false;
-            }, true);
-            boolean linear = (node == null) ? true : node.isTexture2Linear();
-            if(ui.button("Editor.scene.map.linear.button", 5, "Linear", linear)) {
-                scene.getRoot().traverse((n) -> {
-                    n.setTexture2Linear(!n.isTexture2Linear());
-                    return true;
-                });
-            }
             resetSceneEditor = false;
         } else if(editor == NODE_EDITOR) {
             Renderable renderable = selection.getRenderable();
@@ -585,16 +529,6 @@ public class Editor extends Demo {
                 ui.addRow(5);
                 if((result = ui.textField("Editor.node.tex.unit.field", 0, "Tex Unit", selection.getTextureUnit(), resetNodeEditor, 10)) != null) {
                     selection.setTextureUnit((Integer)result);
-                }
-                ui.addRow(5);
-                if(ui.button("Editor.node.light.map.enabled.button", 0, "L Map", selection.isLightMapEnabled())) {
-                    selection.setLightMapEnabled(!selection.isLightMapEnabled());
-                }
-                if(ui.button("Editor.node.casts.shadow.button", 5, "C Shadow", selection.getCastsShadow())) {
-                    selection.setCastsShadow(!selection.getCastsShadow());
-                }
-                if(ui.button("Editor.node.receives.shadow.button", 5, "R Shadow", selection.getReceivesShadow())) {
-                    selection.setReceivesShadow(!selection.getReceivesShadow());
                 }
                 ui.addRow(5);
                 if(ui.button("Editor.node.editor.opaque.button", 0, "Opaque", selection.getBlendState() == BlendState.OPAQUE)) {
@@ -690,7 +624,7 @@ public class Editor extends Demo {
             game.getAssets().clear();
             scene = null;
             sceneFile = null;
-            scene = Scene.load(file, lightMapper);
+            scene = Scene.load(file);
             scene.loadUI();
             sceneFile = file;
             selection = null;
