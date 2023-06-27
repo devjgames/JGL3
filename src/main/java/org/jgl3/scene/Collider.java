@@ -281,15 +281,15 @@ public final class Collider {
         Vector3f target = scene.getCamera().getTarget();
         Vector3f eye = scene.getCamera().getEye();
 
-        target.lerp(point.set(getPosition()), lerpSpeed);
-
         float length = targetLength;
+        boolean isect = false;
 
         getOrigin().set(target);
         getDirection().set(offset).mul(1, 0, 1).normalize();
         setTime(targetLength + (getRadius() - 1));
         if(intersect(scene.getRoot()) != null) {
             length = Math.min(length, getTime()) - (getRadius() - 1);
+            isect = true;
         }
         offset.set(getDirection()).mul(length);
         offset.y = targetHeight + (targetLength - length);
@@ -298,11 +298,16 @@ public final class Collider {
         getDirection().set(offset).normalize();
         if(intersect(scene.getRoot()) != null) {
             length = Math.min(length, getTime()) - (getRadius() - 1);
+            isect = true;
         }
         offset.normalize(length);
         scene.getCamera().getUp().set(0, 1, 0);
 
-        scene.getCamera().getUp().set(0, 1, 0);
+        target.lerp(getPosition(), lerpSpeed);
+
+        if(isect) {
+            target.set(getPosition());
+        }
 
         target.add(offset, eye);
 
