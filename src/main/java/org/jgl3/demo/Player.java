@@ -7,6 +7,7 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Renderer;
 import org.jgl3.Resource;
+import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Scene;
 import org.lwjgl.glfw.GLFW;
 
@@ -15,6 +16,7 @@ public class Player extends Demo {
     private final File file;
     private Scene scene = null;
     private int tested = 0;
+    private String info = "";
 
     public Player(File file) {
         this.file = file;
@@ -24,11 +26,16 @@ public class Player extends Demo {
         this.tested = tested;
     }
 
+    public void setInfo(String info) {
+        this.info = info;
+    }
+
     @Override
     public void init() throws Exception {
-        scene = Scene.load(file);
-
         tested = 0;
+        info = "";
+
+        scene = Scene.load(file, new LightMapper());
     }
 
     @Override
@@ -37,6 +44,7 @@ public class Player extends Demo {
         Font font = game.getUI().getFont();
         Renderer renderer = game.getRenderer();
         int s = game.getScale();
+        int h = game.getHeight();
 
         scene.render(game.getAspectRatio());
         renderer.initSprites();
@@ -52,6 +60,7 @@ public class Player extends Demo {
             "ESC = Quit",
             5 * s, 5 * s, 5 * s, 1, 1, 1, 1
             );
+        renderer.push(info, 5 * s, h - 5 * s - font.getCharHeight() * font.getScale(), 0, 1, 1, 1, 1);
         renderer.endTriangles();
         renderer.end();
 

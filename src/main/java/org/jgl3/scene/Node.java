@@ -1,9 +1,13 @@
 package org.jgl3.scene;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Hashtable;
 import java.util.Vector;
 
+import org.jgl3.AssetLoader;
+import org.jgl3.AssetManager;
 import org.jgl3.BlendState;
 import org.jgl3.BoundingBox;
 import org.jgl3.CullState;
@@ -16,6 +20,7 @@ import org.jgl3.Renderer;
 import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -27,6 +32,127 @@ public final class Node implements Serializable {
         boolean visit(Node node) throws Exception;
     }
 
+    private static class NodeLoader implements AssetLoader {
+
+        @Override
+        public Object load(File file, AssetManager assets) throws Exception {
+            String[] lines = new String(IO.readAllBytes(file)).split("\\n+");
+            Vector<Vector3f> vList = new Vector<>();
+            Vector<Vector2f> tList = new Vector<>();
+            Vector<Vector3f> nList = new Vector<>();
+            Hashtable<String, Texture> textures = new Hashtable<>();
+            Node node = new Node();
+            Node mesh = new Node();
+
+            for (String line : lines) {
+                String tLine = line.trim();
+                String[] tokens = tLine.split("\\s+");
+
+                if(tLine.startsWith("mtllib ")) {
+                    File mFile = IO.file(file.getParentFile(), tLine.substring(6).trim());
+                    String[] mLines = new String(IO.readAllBytes(mFile)).split("\\n+");
+                    String mName = null;
+
+                    for(String mLine : mLines) {
+                        String tmLine = mLine.trim();
+                        
+                        if(tmLine.startsWith("newmtl ")) {
+                            mName = tmLine.substring(6).trim();
+                        } else if(tmLine.startsWith("map_Kd ")) {
+                            File tFile = IO.file(file.getParentFile(), tmLine.substring(6).trim());
+
+                            textures.put(mName, Game.getInstance().getAssets().load(tFile));
+                        }
+                    }
+                } else if(tLine.startsWith("usemtl ")) {
+                    String name = tLine.substring(6).trim();
+                    Texture texture = null;
+
+                    if(textures.containsKey(name)) {
+                        texture = textures.get(name);
+                        name = IO.fileNameWithOutExtension(texture.getFile());
+                    } else {
+                        name = "";
+                    }
+                    mesh = node.find(name, false);
+                    if(mesh == null) {
+                        mesh = new Node();
+                        mesh.setName(name);
+                        mesh.setTexture(texture);
+                        node.addChild(null, mesh);
+                    }
+                } else if (tLine.startsWith("v ")) {
+                    Vector3f v = new Vector3f(
+                        Float.parseFloat(tokens[1]),
+                        Float.parseFloat(tokens[2]),
+                        Float.parseFloat(tokens[3])
+                    );
+                    vList.add(v);
+                } else if (tLine.startsWith("vt ")) {
+                    Vector2f v = new Vector2f(
+                        Float.parseFloat(tokens[1]),
+                        1 - Float.parseFloat(tokens[2])
+                    );
+                    tList.add(v);
+                } else if (tLine.startsWith("vn ")) {
+                    Vector3f v = new Vector3f(
+                        Float.parseFloat(tokens[1]),
+                        Float.parseFloat(tokens[2]),
+                        Float.parseFloat(tokens[3])
+                    );
+                    nList.add(v);
+                } else if (tLine.startsWith("f ")) {
+                    if(mesh == null) {
+                        mesh = new Node();
+                        mesh.setName("");
+                        node.addChild(null, mesh);
+                    }
+                    int bV = mesh.getVertexCount();
+                    int[] indices = new int[tokens.length - 1];
+
+                    for (int i = 1; i != tokens.length; i++) {
+                        String[] iTokens = tokens[i].split("[/]+");
+                        int vI = Integer.parseInt(iTokens[0]) - 1;
+                        int tI = Integer.parseInt(iTokens[1]) - 1;
+                        int nI = Integer.parseInt(iTokens[2]) - 1;
+                        Vector3f v = vList.get(vI);
+                        Vector2f t = tList.get(tI);
+                        Vector3f n = nList.get(nI);
+
+                        mesh.push(
+                            v.x, v.y, v.z,
+                            t.x, t.y,
+                            0, 0,
+                            n.x, n.y, n.z,
+                            1, 1, 1, 1
+                        );
+
+                        indices[i - 1] = bV + i - 1;
+                    }
+                    mesh.push(indices);
+                }
+            }
+
+            if(node.getChildCount() == 1) {
+                node = node.getChild(0);
+                node.calcBounds();
+                node.compile();
+            } else {
+                for(int i = 0; i != node.getChildCount(); i++) {
+                    mesh = node.getChild(i);
+                    mesh.calcBounds();
+                    mesh.compile();
+                }
+            }
+            return node;
+        }
+    
+    }
+
+    public static void registerAssetLoader() {
+        Game.getInstance().getAssets().registerAssetLoader(".obj", Scene.ASSET_TAG, new NodeLoader());
+    }
+
     private String name = "Node";
     private String tag = "";
     private boolean visible = true;
@@ -34,6 +160,9 @@ public final class Node implements Serializable {
     private boolean dynamic = false;
     private boolean lightingEnabled = false;
     private boolean vertexColorEnabled = false;
+    private boolean lightMapEnabled = false;
+    private boolean castsShadow = false;
+    private boolean receivesShadow = true;
     private boolean isLight = false;
     private float lightRadius = 300;
     private DepthState depthState = DepthState.READWRITE;
@@ -137,6 +266,33 @@ public final class Node implements Serializable {
 
     public Node setVertexColorEnabled(boolean enabled) {
         vertexColorEnabled = enabled;
+        return this;
+    }
+
+    public boolean isLightMapEnabled() {
+        return lightMapEnabled;
+    }
+
+    public Node setLightMapEnabled(boolean enabled) {
+        lightMapEnabled = enabled;
+        return this;
+    }
+
+    public boolean getCastsShadow() {
+        return castsShadow;
+    }
+
+    public Node setCastsShadow(boolean castsShadow) {
+        this.castsShadow = castsShadow;
+        return this;
+    }
+
+    public boolean getReceivesShadow() {
+        return receivesShadow;
+    }
+
+    public Node setReceivesShadow(boolean receivesShadow) {
+        this.receivesShadow = receivesShadow;
         return this;
     }
 

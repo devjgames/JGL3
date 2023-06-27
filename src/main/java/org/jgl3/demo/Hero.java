@@ -14,12 +14,10 @@ public class Hero extends Animator {
     
     private KeyFrameMesh mesh = null;
     private final Collider collider = new Collider();
-    private Sound jumpSound, painSound;
+    private Sound painSound;
     private boolean dead;
     private final Vector3f start = new Vector3f();
     private final Vector3f startOffset = new Vector3f();
-    private int jump;
-    private int baseLength, height;
 
     public Hero() throws Exception {
         collider.setContactListener((tri) -> {
@@ -31,42 +29,45 @@ public class Hero extends Animator {
 
     @Override
     public void init(Scene scene, Node node) throws Exception {
-        if(App.getDemo() instanceof Editor) {
+        Demo demo = App.getDemo();
+
+        if(demo instanceof Editor) {
             return;
         }
 
         Game game = Game.getInstance();
 
-        jump = Integer.parseInt(getToken(1));
-        baseLength = Integer.parseInt(getToken(2));
-        height = Integer.parseInt(getToken(3));
-
-        collider.setGroundSlope(Integer.parseInt(getToken(4)));
+        collider.setTargetLength(Integer.parseInt(getToken(1)));
+        collider.setTargetHeight(Integer.parseInt(getToken(2)));
+        collider.setGroundSlope(Integer.parseInt(getToken(3)));
+        collider.setLerpSpeed(Float.parseFloat(getToken(4)));
 
         mesh = (KeyFrameMesh)node.getChild(0).getRenderable();
         start.set(node.getPosition());
-        jumpSound = game.getAssets().load(IO.file("assets/sound/jump.wav"));
-        jumpSound.setVolume(0.25f);
         painSound = game.getAssets().load(IO.file("assets/sound/pain.wav"));
         painSound.setVolume(0.25f);
 
         Vector3f offset = scene.getCamera().getOffset();
 
-        if(baseLength > 0 && height > 0) {
-            offset.mul(1, 0, 1).normalize(baseLength);
-            offset.y = height;
-        } 
+        offset.mul(1, 0, 1).normalize(collider.getTargetLength());
+        offset.y = collider.getTargetHeight();
         startOffset.set(offset);
         scene.getCamera().getTarget().set(start);
         scene.getCamera().getTarget().add(offset, scene.getCamera().getEye());
         scene.getCamera().getUp().set(0, 1, 0);
 
         dead = false;
+
+        if(demo instanceof Player) {
+            ((Player)demo).setInfo("Press left & right keys to turn, up & down keys to move");
+        }
     }
 
     @Override
     public void animate(Scene scene, Node node) throws Exception {
-        if(App.getDemo() instanceof Editor) {
+        Demo demo = App.getDemo();
+
+        if(demo instanceof Editor) {
             return;
         }
 
@@ -78,9 +79,7 @@ public class Hero extends Animator {
                 dead = false;
             }
         } else {
-            collider.move(scene, node, 100, jump, jumpSound, baseLength, height);
-
-            Demo demo = App.getDemo();
+            collider.move(scene, node, 100);
 
             if(demo instanceof Player) {
                 ((Player)demo).setTested(collider.getTested());

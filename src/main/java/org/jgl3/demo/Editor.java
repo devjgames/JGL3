@@ -21,7 +21,7 @@ import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMesh;
-import org.jgl3.scene.Mesh;
+import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.Renderable;
 import org.jgl3.scene.Scene;
@@ -30,6 +30,10 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 public class Editor extends Demo {
+
+    public static interface Tools {
+        Node handleUI(UIManager ui, Scene scene, Node selection, boolean reset) throws Exception;
+    }
 
     private static final int ZOOM = 0;
     private static final int ROT = 1;
@@ -47,6 +51,7 @@ public class Editor extends Demo {
     private static final int RENDERABLES = 4;
     private static final int TEXTURE = 5;
     private static final int ANIMATOR = 6;
+    private static final int TOOLS = 7;
 
     private Scene scene = null;
     private int mode = 0;
@@ -68,6 +73,7 @@ public class Editor extends Demo {
     private String sceneName = "";
     private boolean resetNodeEditor = false;
     private boolean resetSceneEditor = false;
+    private boolean resetToolsEditor = false;
     private File sceneFile = null;
     private Node selection = null;
     private final Vector<String> extensions = new Vector<>();
@@ -84,11 +90,15 @@ public class Editor extends Demo {
     private final Vector3f point = new Vector3f();
     private final float[] time = new float[1];
     private final BoundingBox bounds = new BoundingBox();
-    private final BoundingBox uiBounds = new BoundingBox();
     private final Matrix4f matrix = new Matrix4f();
     private final Triangle triangle = new Triangle();
     private Node clipboard = null;
     private RenderTarget renderTarget = null;
+    private final Tools tools;
+
+    public Editor(Tools tools) {
+        this.tools = tools;
+    }
 
     @Override
     public void init() throws Exception {
@@ -101,6 +111,7 @@ public class Editor extends Demo {
         sceneName = "";
         resetNodeEditor = false;
         resetSceneEditor = false;
+        resetToolsEditor = false;
         sceneFile = null;
         selection = null;
         clipboard = null;
@@ -211,6 +222,10 @@ public class Editor extends Demo {
                     mode = i;
                 } 
             }
+            if(ui.button("Editor.tools.button", 5, "Tools", editor == TOOLS)) {
+                editor = TOOLS;
+                resetToolsEditor = true;
+            }
             if(ui.button("Editor.dark.button", 5, "Dark", UIManager.BACKGROUND.x == 0)) {
                 float x = UIManager.BACKGROUND.x;
 
@@ -257,14 +272,14 @@ public class Editor extends Demo {
                                 }
                             }
                             if(n.isLight()) {
-                                Mesh uiMesh = scene.getUI();
+                                Node uiNode = scene.getUI();
 
-                                matrix.identity().translate(n.getAbsolutePosition()).scale(2, 2, 2);
-                                uiBounds.set(uiMesh.getBounds()).transform(matrix);
-
-                                if(bounds.touches(uiBounds)) {
-                                    for(int i = 0; i != uiMesh.getTriangleCount(); i++) {
-                                        uiMesh.getTriangle(i, triangle).transform(matrix);
+                                uiNode.getPosition().set(n.getAbsolutePosition());
+                                uiNode.getScale().set(2, 2, 2);
+                                uiNode.calcBoundsAndTransform(scene.getCamera());
+                                if(bounds.touches(uiNode.getBounds())) {
+                                    for(int i = 0; i != uiNode.getTriangleCount(); i++) {
+                                        uiNode.getTriangle(i, triangle).transform(matrix);
                                         if(triangle.getNormal().dot(direction) < 0) {
                                             if(triangle.intersects(origin, direction, 0, time)) {
                                                 selection = n;
@@ -405,9 +420,6 @@ public class Editor extends Demo {
 
                     node.setRenderable(game.getAssets().load(file));
                     node.setRenderable(node.getRenderable().newInstance());
-                    if(node.getRenderable() instanceof Mesh) {
-                        node.setCollidable(true);
-                    }
                     if(textureFile.exists()) {
                         node.setTexture(game.getAssets().load(textureFile));
                     } else {
@@ -440,6 +452,18 @@ public class Editor extends Demo {
                 resetNodeEditor = true;
             }
             selRenderable = -2;
+        } else if(editor == TOOLS) {
+            Node node = tools.handleUI(ui, scene, selection, resetToolsEditor);
+            if(node != selection) {
+                selection = node;
+                if(selection == null) {
+                    editor = -1;
+                } else {
+                    editor = NODE_EDITOR;
+                    resetNodeEditor = true;
+                }
+            }
+            resetToolsEditor = false;
         } else if(editor == SCENE_EDITOR) {
             if((result = ui.textField("Editor.scene.editor.snap.field", 0, "Snap", scene.getSnap(), resetSceneEditor, 6)) != null) {
                 scene.setSnap(Math.max(0, (Integer)result));
@@ -453,6 +477,61 @@ public class Editor extends Demo {
             }
             ui.addRow(5);
             ui.textField("Editor.scene.editor.background.color.field", 0, "Background", scene.getBackgroundColor(), resetSceneEditor, 20);
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.ao.strength.field", 0, "AO Strength", scene.getAOStrength(), resetSceneEditor, 10)) != null) {
+                scene.setAOStrength((Float)result);
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.ao.length.field", 0, "AO Length", scene.getAOLength(), resetSceneEditor, 10)) != null) {
+                scene.setAOLength((Float)result);
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.sample.radius.field", 0, "Sample Radius", scene.getSampleRadius(), resetSceneEditor, 10)) != null) {
+                scene.setSampleRadius((Float)result);
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.sample.count.field", 0, "Sample Count", scene.getSampleCount(), resetSceneEditor, 10)) != null) {
+                scene.setSampleCount((Integer)result);
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.lm.width.field", 0, "LM Width", scene.getLightMapWidth(), resetSceneEditor, 10)) != null) {
+                scene.setLightMapWidth(Math.max(64, Math.min(4096, (Integer)result)));
+            }
+            ui.addRow(5);
+            if((result = ui.textField("Editor.scene.lm.height.field", 0, "LM Height", scene.getLightMapHeight(), resetSceneEditor, 10)) != null) {
+                scene.setLightMapHeight(Math.max(64, Math.min(4096, (Integer)result)));
+            }
+            ui.addRow(5);
+            if(ui.button("Editor.scene.lm.lambert.button", 0, "Light Map Lambert", scene.isLightMapLambert())) {
+                scene.setLightMapLambert(!scene.isLightMapLambert());
+            }
+            ui.addRow(5);
+            if(ui.button("Editor.scene.map.button", 0, "Map", false)) {
+                File mapFile = IO.file(sceneFile.getParentFile(), IO.fileNameWithOutExtension(sceneFile) + ".png");
+                LightMapper lightMapper = new LightMapper();
+
+                lightMapper.map(scene, mapFile, true);
+            }
+            if(ui.button("Editor.scene.map.clear.button", 5, "Clear Map", false)) {
+                scene.getRoot().traverse((n) -> {
+                    n.setTexture2(null);
+                    return true;
+                });
+            }
+            Node node = scene.getRoot().find((n) -> {
+                Texture texture = n.getTexture2();
+                if(texture != null) {
+                    return true;
+                }
+                return false;
+            }, true);
+            boolean linear = (node == null) ? true : node.isTexture2Linear();
+            if(ui.button("Editor.scene.map.linear.button", 5, "Linear", linear)) {
+                scene.getRoot().traverse((n) -> {
+                    n.setTexture2Linear(!n.isTexture2Linear());
+                    return true;
+                });
+            }
             resetSceneEditor = false;
         } else if(editor == NODE_EDITOR) {
             Renderable renderable = selection.getRenderable();
@@ -513,8 +592,22 @@ public class Editor extends Demo {
                 if(ui.button("Editor.node.editor.lighting.enabled.button", 0, "Lit", selection.isLightingEnabled())) {
                     selection.setLightingEnabled(!selection.isLightingEnabled());
                 }
+                ui.addRow(5);
+                if(ui.button("Editor.node.set.tex.button", 0, "Set Tex", false)) {
+                    Texture texture = selection.getTexture();
+
+                    selTexture = -1;
+                    if(texture != null) {
+                        selTexture = textureFiles.indexOf(texture.getFile());
+                    }
+                    editor = TEXTURE;
+                }
                 if(selection.getTexture() != null) {
-                    if(ui.button("Editor.node.editor.textureLinear.button", 5, "Linear", selection.isTextureLinear())) {
+                    if(ui.button("Editor.node.clear.tex.button", 5, "Clear Tex", false)) {
+                        selection.setTexture(null);
+                    }
+                    ui.addRow(5);
+                    if(ui.button("Editor.node.editor.textureLinear.button", 0, "Linear", selection.isTextureLinear())) {
                         selection.setTextureLinear(!selection.isTextureLinear());
                         scene.getRoot().traverse((n) -> {
                             Texture texture = n.getTexture();
@@ -525,10 +618,22 @@ public class Editor extends Demo {
                             return true;
                         });
                     }
+                    ui.addRow(5);
+                    if((result = ui.textField("Editor.node.tex.unit.field", 0, "Tex Unit", selection.getTextureUnit(), resetNodeEditor, 10)) != null) {
+                        selection.setTextureUnit((Integer)result);
+                    }
                 }
-                ui.addRow(5);
-                if((result = ui.textField("Editor.node.tex.unit.field", 0, "Tex Unit", selection.getTextureUnit(), resetNodeEditor, 10)) != null) {
-                    selection.setTextureUnit((Integer)result);
+                if(selection.hasMesh()) {
+                    ui.addRow(5);
+                    if(ui.button("Editor.node.light.map.enabled.button", 0, "L Map", selection.isLightMapEnabled())) {
+                        selection.setLightMapEnabled(!selection.isLightMapEnabled());
+                    }
+                    if(ui.button("Editor.node.casts.shadow.button", 5, "C Shadow", selection.getCastsShadow())) {
+                        selection.setCastsShadow(!selection.getCastsShadow());
+                    }
+                    if(ui.button("Editor.node.receives.shadow.button", 5, "R Shadow", selection.getReceivesShadow())) {
+                        selection.setReceivesShadow(!selection.getReceivesShadow());
+                    }
                 }
                 ui.addRow(5);
                 if(ui.button("Editor.node.editor.opaque.button", 0, "Opaque", selection.getBlendState() == BlendState.OPAQUE)) {
@@ -546,19 +651,6 @@ public class Editor extends Demo {
                 ui.addRow(5);
                 if(ui.button("Editor.node.editor.cull.enabled.button", 0, "Cull Enabled", selection.getCullState() != CullState.NONE)) {
                     selection.setCullState((selection.getCullState() == CullState.NONE) ? CullState.BACK : CullState.NONE);
-                }
-                ui.addRow(5);
-                if(ui.button("Editor.node.clear.tex.button", 0, "Clear Texture", false)) {
-                    selection.setTexture(null);
-                }
-                if(ui.button("Editor.node.set.tex.button", 5, "Set Texture", false)) {
-                    Texture texture = selection.getTexture();
-
-                    selTexture = -1;
-                    if(texture != null) {
-                        selTexture = textureFiles.indexOf(texture.getFile());
-                    }
-                    editor = TEXTURE;
                 }
                 ui.addRow(5);
                 if(ui.button("Editor.node.warp.enabled.button", 0, "Warp Enabled", selection.isWarpEnabled())) {
@@ -624,7 +716,7 @@ public class Editor extends Demo {
             game.getAssets().clear();
             scene = null;
             sceneFile = null;
-            scene = Scene.load(file);
+            scene = Scene.load(file, new LightMapper());
             scene.loadUI();
             sceneFile = file;
             selection = null;

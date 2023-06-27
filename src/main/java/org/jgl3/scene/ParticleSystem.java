@@ -69,6 +69,10 @@ public final class ParticleSystem implements Renderable {
         }
     }
 
+    public ParticleEmitter getEmitter() {
+        return emitter;
+    }
+
     @Override
     public File getFile() {
         return file;
