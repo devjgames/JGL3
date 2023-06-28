@@ -12,6 +12,7 @@ import org.jgl3.Renderer;
 import org.jgl3.demo.Editor.Tools;
 import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMeshLoader;
+import org.jgl3.scene.Mesh;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.ParticleSystem;
 import org.jgl3.scene.Renderable;
@@ -27,10 +28,10 @@ public class App {
     }
 
     public static Tools createTools() {
-        return (ui, scene, selection, reset) -> {
+        return (ui, sceneFile, scene, selection, reset) -> {
             Game game = Game.getInstance();
             final Vector<Node> detach = new Vector<>();
-            final BoundingBox b = new BoundingBox();
+            final BoundingBox bounds = new BoundingBox();
             Visitor clearTorches = (n) -> {
                 Renderable renderable = n.getRenderable();
 
@@ -57,9 +58,9 @@ public class App {
                                 float y = n.getVertexComponent(n.getFaceVertex(i, 0), 8);
 
                                 if(y > 0.9f) {
-                                    b.clear();
+                                    bounds.clear();
                                     for(int j = 0; j != n.getFaceVertexCount(i); j++) {
-                                        b.add(
+                                        bounds.add(
                                             n.getVertexComponent(n.getFaceVertex(i, j), 0),
                                             n.getVertexComponent(n.getFaceVertex(i, j), 1),
                                             n.getVertexComponent(n.getFaceVertex(i, j), 2)
@@ -75,7 +76,7 @@ public class App {
                                     node.setTexture(game.getAssets().load(IO.file("assets/particles/fire.png")));
                                     node.setRenderable(game.getAssets().load(IO.file("assets/particles/fire.par")));
                                     node.setRenderable(node.getRenderable().newInstance());
-                                    b.getCenter(node.getPosition());
+                                    bounds.getCenter(node.getPosition());
 
                                     scene.getRoot().addChild(scene, node);
                                 }
@@ -162,6 +163,7 @@ public class App {
         KeyFrameMeshLoader.registerAssetLoader();
         ParticleSystem.registerAssetLoader();
         Animator.registerAssetLoader();
+        Mesh.registerAssetLoader();
     }
 
     public static void main(String[] args) throws Exception {

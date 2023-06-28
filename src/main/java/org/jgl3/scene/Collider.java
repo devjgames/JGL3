@@ -238,14 +238,14 @@ public final class Collider {
             scene.getCamera().rotateAroundTarget((float)Math.toRadians(-180) * game.getElapsedTime(), 0);
         }
         if(game.isKeyDown(GLFW.GLFW_KEY_DOWN)) {
-            dy = 1;
-        } else if(game.isKeyDown(GLFW.GLFW_KEY_UP)) {
             dy = -1;
+        } else if(game.isKeyDown(GLFW.GLFW_KEY_UP)) {
+            dy = 1;
         }
         getVelocity().mul(0, 1, 0);
         f.set(scene.getCamera().getOffset()).mul(-1, 0, -1);
         if(dy != 0 && f.length() > 0.0000001) {
-            f.normalize().mul(-speed * dy);
+            f.normalize().mul(dy * speed);
             getVelocity().add(f);
             f.normalize();
             float radians = (float)Math.acos(Math.max(-1, Math.min(1, f.x)));
@@ -280,16 +280,15 @@ public final class Collider {
         Vector3f offset = scene.getCamera().getOffset();
         Vector3f target = scene.getCamera().getTarget();
         Vector3f eye = scene.getCamera().getEye();
+        Vector3f up = scene.getCamera().getUp();
 
         float length = targetLength;
-        boolean isect = false;
 
         getOrigin().set(target);
         getDirection().set(offset).mul(1, 0, 1).normalize();
         setTime(targetLength + (getRadius() - 1));
         if(intersect(scene.getRoot()) != null) {
             length = Math.min(length, getTime()) - (getRadius() - 1);
-            isect = true;
         }
         offset.set(getDirection()).mul(length);
         offset.y = targetHeight + (targetLength - length);
@@ -298,18 +297,11 @@ public final class Collider {
         getDirection().set(offset).normalize();
         if(intersect(scene.getRoot()) != null) {
             length = Math.min(length, getTime()) - (getRadius() - 1);
-            isect = true;
         }
         offset.normalize(length);
-        scene.getCamera().getUp().set(0, 1, 0);
-
         target.lerp(getPosition(), lerpSpeed);
-
-        if(isect) {
-            target.set(getPosition());
-        }
-
         target.add(offset, eye);
+        up.set(0, 1, 0);
 
         return moving;
     }

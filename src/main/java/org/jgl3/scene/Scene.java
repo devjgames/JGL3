@@ -48,6 +48,7 @@ public final class Scene implements Serializable {
     private int lightMapWidth = 128;
     private int lightMapHeight = 128;
     private boolean lightMapLambert = true;
+    private boolean textureEnabled = true;
 
     public Scene() {
         me = this;
@@ -164,6 +165,15 @@ public final class Scene implements Serializable {
 
     public Scene setDrawAxis(boolean drawAxis) {
         this.drawAxis = drawAxis;
+        return this;
+    }
+
+    public boolean isTextureEnabled() {
+        return textureEnabled;
+    }
+
+    public Scene setTextureEnabled(boolean enabled) {
+        textureEnabled = enabled;
         return this;
     }
 
@@ -336,7 +346,7 @@ public final class Scene implements Serializable {
         renderer.setModel(renderable.getModel());
         renderer.setLightingEnabled(renderable.isLightingEnabled());
         renderer.setVertexColorEnabled(renderable.isVertexColorEnabled());
-        renderer.setTexture(renderable.getTexture());
+        renderer.setTexture((textureEnabled) ? renderable.getTexture() : null);
         renderer.setTexture2(renderable.getTexture2());
         renderer.setAmbientColor(renderable.getAmbientColor());
         renderer.setDiffuseColor(renderable.getDiffuseColor());

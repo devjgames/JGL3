@@ -59,7 +59,7 @@ public class Hero extends Animator {
         dead = false;
 
         if(demo instanceof Player) {
-            ((Player)demo).setInfo("Press left & right keys to turn, up & down keys to move");
+            ((Player)demo).setInfo("Press left & right arrow keys to turn, up & down arrow keys to move");
         }
     }
 

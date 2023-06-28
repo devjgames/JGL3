@@ -32,7 +32,7 @@ import org.joml.Vector3f;
 public class Editor extends Demo {
 
     public static interface Tools {
-        Node handleUI(UIManager ui, Scene scene, Node selection, boolean reset) throws Exception;
+        Node handleUI(UIManager ui, File sceneFile, Scene scene, Node selection, boolean reset) throws Exception;
     }
 
     private static final int ZOOM = 0;
@@ -453,7 +453,7 @@ public class Editor extends Demo {
             }
             selRenderable = -2;
         } else if(editor == TOOLS) {
-            Node node = tools.handleUI(ui, scene, selection, resetToolsEditor);
+            Node node = tools.handleUI(ui, sceneFile, scene, selection, resetToolsEditor);
             if(node != selection) {
                 selection = node;
                 if(selection == null) {
@@ -531,6 +531,10 @@ public class Editor extends Demo {
                     n.setTexture2Linear(!n.isTexture2Linear());
                     return true;
                 });
+            }
+            ui.addRow(5);
+            if(ui.button("Editor.scene.texture.enabled", 0, "Texture Enabled", scene.isTextureEnabled())) {
+                scene.setTextureEnabled(!scene.isTextureEnabled());
             }
             resetSceneEditor = false;
         } else if(editor == NODE_EDITOR) {

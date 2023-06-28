@@ -367,8 +367,29 @@ public class LightMapper {
                         }
 
                         if(mesh.getReceivesShadow()) {
+                            int  count = 0;
+
                             random = new Random(1000);
                             sv = 1;
+
+                            for(int i = 0; i != scene.getSampleCount(); i++) {
+                                Vector3f direction = new Vector3f(
+                                    random.nextFloat() * 2 - 1,
+                                    random.nextFloat() * 2 - 1,
+                                    random.nextFloat() * 2 - 1
+                                );
+
+                                if(direction.length() < 0.0000001) {
+                                    direction.set(0, 1, 0);
+                                }
+                                direction.normalize();
+
+                                if(direction.dot(n) > 0.2f) {
+                                    count++;
+                                }
+                            }
+
+                            random = new Random(1000);
 
                             for(int i = 0; i != scene.getSampleCount(); i++) {
                                 origin = p.add(n, new Vector3f());
@@ -399,7 +420,7 @@ public class LightMapper {
                                         return !hit;
                                     });
                                     if(hit) {
-                                        sv = Math.max(0, sv - scene.getAOStrength() / scene.getSampleCount());
+                                        sv = Math.max(0, sv - scene.getAOStrength() / count);
                                     }
                                 }
                             }
