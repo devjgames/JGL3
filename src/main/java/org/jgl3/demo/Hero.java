@@ -40,7 +40,6 @@ public class Hero extends Animator {
         collider.setTargetLength(Integer.parseInt(getToken(1)));
         collider.setTargetHeight(Integer.parseInt(getToken(2)));
         collider.setGroundSlope(Integer.parseInt(getToken(3)));
-        collider.setLerpSpeed(Float.parseFloat(getToken(4)));
 
         mesh = (KeyFrameMesh)node.getChild(0).getRenderable();
         start.set(node.getPosition());

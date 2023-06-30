@@ -46,7 +46,6 @@ public final class Collider {
     private float speed = 100;
     private float targetLength = 100;
     private float targetHeight = 25;
-    private float lerpSpeed = 0.01f;
 
     public Vector3f getPosition() {
         return position;
@@ -183,15 +182,6 @@ public final class Collider {
         return this;
     }
 
-    public float getLerpSpeed() {
-        return lerpSpeed;
-    }
-
-    public Collider setLerpSpeed(float speed) {
-        lerpSpeed = speed;
-        return this;
-    }
-
     public Triangle intersect(Node node) throws Exception {
         hit = null;
         node.traverse((n) -> {
@@ -278,13 +268,10 @@ public final class Collider {
         node.getPosition().set(getPosition());
 
         Vector3f offset = scene.getCamera().getOffset();
-        Vector3f target = scene.getCamera().getTarget();
-        Vector3f eye = scene.getCamera().getEye();
-        Vector3f up = scene.getCamera().getUp();
 
         float length = targetLength;
 
-        getOrigin().set(target);
+        getOrigin().set(getPosition());
         getDirection().set(offset).mul(1, 0, 1).normalize();
         setTime(targetLength + (getRadius() - 1));
         if(intersect(scene.getRoot()) != null) {
@@ -299,7 +286,12 @@ public final class Collider {
             length = Math.min(length, getTime()) - (getRadius() - 1);
         }
         offset.normalize(length);
-        target.lerp(getPosition(), lerpSpeed);
+
+        Vector3f target = scene.getCamera().getTarget();
+        Vector3f eye = scene.getCamera().getEye();
+        Vector3f up = scene.getCamera().getUp();
+
+        target.set(getPosition());
         target.add(offset, eye);
         up.set(0, 1, 0);
 

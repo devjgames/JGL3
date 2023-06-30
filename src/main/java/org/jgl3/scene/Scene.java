@@ -234,8 +234,9 @@ public final class Scene implements Serializable {
                 if(n.isLight()) {
                     lights.add(n);
                 }
+                return true;
             }
-            return true;
+            return false;
         });
 
         root.calcBoundsAndTransform(camera);

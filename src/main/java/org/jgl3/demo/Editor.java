@@ -552,7 +552,10 @@ public class Editor extends Demo {
             ui.addRow(5);
             ui.textField("Editor.node.editor.scale.field", 0, "Scale", selection.getScale(), resetNodeEditor, 20);
             ui.addRow(5);
-            if(ui.button("Editor.node.set.animator.button", 0, "Set Animator", false)) {
+            if(ui.button("Editor.node.visible.button", 0, "Visible",selection.isVisible())) {
+                selection.setVisible(!selection.isVisible());
+            }
+            if(ui.button("Editor.node.set.animator.button", 5, "Set Animator", false)) {
                 Animator animator = selection.getAnimator();
 
                 selAnimator = -1;
