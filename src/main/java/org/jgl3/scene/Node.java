@@ -7,7 +7,6 @@ import java.util.Hashtable;
 import java.util.Vector;
 
 import org.jgl3.AssetLoader;
-import org.jgl3.AssetManager;
 import org.jgl3.BlendState;
 import org.jgl3.BoundingBox;
 import org.jgl3.CullState;
@@ -35,14 +34,14 @@ public final class Node implements Serializable {
     private static class NodeLoader implements AssetLoader {
 
         @Override
-        public Object load(File file, AssetManager assets) throws Exception {
+        public Object load(File file) throws Exception {
             String[] lines = new String(IO.readAllBytes(file)).split("\\n+");
             Vector<Vector3f> vList = new Vector<>();
             Vector<Vector2f> tList = new Vector<>();
             Vector<Vector3f> nList = new Vector<>();
             Hashtable<String, Texture> textures = new Hashtable<>();
             Node node = new Node();
-            Node mesh = new Node();
+            Node mesh = null;
 
             for (String line : lines) {
                 String tLine = line.trim();
@@ -135,13 +134,14 @@ public final class Node implements Serializable {
 
             if(node.getChildCount() == 1) {
                 node = node.getChild(0);
-                node.calcBounds();
-                node.compile();
+                node.calcMeshBounds();
+                node.compileMesh();
             } else {
                 for(int i = 0; i != node.getChildCount(); i++) {
                     mesh = node.getChild(i);
-                    mesh.calcBounds();
-                    mesh.compile();
+                    mesh.calcMeshBounds();
+                    mesh.compileMesh();
+                    System.out.println(mesh.getIndexCount());
                 }
             }
             return node;
@@ -562,6 +562,12 @@ public final class Node implements Serializable {
         return getVertexCount() != 0 && getIndexCount() != 0;
     }
 
+    public void clearMesh() {
+        vertices.clear();
+        indices.clear();
+        faces.clear();
+    }
+
     public int getVertexCount() {
         return vertices.size() / Renderer.COMPONENTS;
     }
@@ -575,7 +581,7 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public Node calcBounds() {
+    public Node calcMeshBounds() {
         meshBounds.clear();
         for(int i = 0; i != getVertexCount(); i++) {
             meshBounds.add(
@@ -639,7 +645,7 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public Node compile() {
+    public Node compileMesh() {
         if(hasMesh()) {
             int v = 0;
 

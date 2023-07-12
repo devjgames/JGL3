@@ -15,7 +15,7 @@ public final class Font extends Resource {
 
     public Font(File file, int charW, int charH, int columns, int whiteX, int whiteY, int scale) throws Exception {
         this.file = file;
-        texture = (Texture)new Texture.Loader().load(file, null);
+        texture = (Texture)new Texture.Loader().load(file);
         this.charW = charW;
         this.charH = charH;
         this.columns = columns;

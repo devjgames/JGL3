@@ -9,7 +9,7 @@ public class Fire implements ParticleEmitter {
     
     @Override
     public void emitParticle(Particle particle, Random random) {
-        float c = 0.25f + random.nextFloat() * 0.25f;
+        float c = 0.05f + random.nextFloat() * 0.1f;
 
         particle.startColorR = 
         particle.startColorG = 

@@ -36,7 +36,7 @@ public final class AssetManager extends ResourceManager {
         if(!assets.containsKey(key)) {
             Log.put(1, "Loading assets - '" + key + "' ...");
 
-            assets.put(key, assetLoaders.get(IO.extension(file)).load(file, this));
+            assets.put(key, assetLoaders.get(IO.extension(file)).load(file));
         }
         return (T)assets.get(key);
     }

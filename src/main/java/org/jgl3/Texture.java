@@ -18,7 +18,7 @@ public final class Texture extends Resource {
 
     public static final class Loader implements AssetLoader {
         @Override
-        public Object load(File file, AssetManager assets) throws Exception {
+        public Object load(File file) throws Exception {
             BufferedImage image = ImageIO.read(file);
             int w = image.getWidth();
             int h = image.getHeight();

@@ -11,7 +11,7 @@ public final class Sound extends Resource {
     public final static class SoundLoader implements AssetLoader {
 
         @Override
-        public Object load(File file, AssetManager assets) throws Exception {
+        public Object load(File file) throws Exception {
             BinReader reader = new BinReader(IO.readAllBytes(file));
             int b1 = reader.readByte();
             int b2 = reader.readByte();

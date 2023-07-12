@@ -31,8 +31,14 @@ import org.joml.Vector3f;
 
 public class Editor extends Demo {
 
+    private static Editor instance = null;
+
+    public static Editor getInstance() {
+        return instance;
+    }
+
     public static interface Tools {
-        Node handleUI(UIManager ui, File sceneFile, Scene scene, Node selection, boolean reset) throws Exception;
+        Node handleUI(boolean reset) throws Exception;
     }
 
     private static final int ZOOM = 0;
@@ -98,6 +104,20 @@ public class Editor extends Demo {
 
     public Editor(Tools tools) {
         this.tools = tools;
+
+        instance = this;
+    }
+
+    public Scene getScene() {
+        return scene;
+    }
+
+    public Node getSelection() {
+        return selection;
+    }
+
+    public File getSceneFile() {
+        return sceneFile;
     }
 
     @Override
@@ -147,7 +167,7 @@ public class Editor extends Demo {
     public boolean run() throws Exception { 
         Game game = Game.getInstance();
         Renderer renderer = game.getRenderer();
-        UIManager ui = game.getUI();
+        UIManager ui = UIManager.getInstance();
         Font font = ui.getFont();
         int s = game.getScale();
         int h = game.getHeight();
@@ -437,7 +457,6 @@ public class Editor extends Demo {
                         KeyFrameMesh mesh = (KeyFrameMesh)node.getRenderable();
 
                         node.getPosition().y -= mesh.getFrame(0).getBounds().getMin().z;
-                        node.getPosition().y -= 16;
                         node.getRotation().rotate((float)Math.toRadians(-90), 1, 0, 0);
                         parent.addChild(scene, node);
                         node = parent;
@@ -453,7 +472,7 @@ public class Editor extends Demo {
             }
             selRenderable = -2;
         } else if(editor == TOOLS) {
-            Node node = tools.handleUI(ui, sceneFile, scene, selection, resetToolsEditor);
+            Node node = tools.handleUI(resetToolsEditor);
             if(node != selection) {
                 selection = node;
                 if(selection == null) {

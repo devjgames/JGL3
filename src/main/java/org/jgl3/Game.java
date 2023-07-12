@@ -1,6 +1,5 @@
 package org.jgl3;
 
-import org.jgl3.ui.UIManager;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
@@ -19,7 +18,6 @@ public final class Game {
     private final AssetManager assets;
     private final SoundEngine soundEngine;
     private final Renderer renderer;
-    private UIManager ui;
     private final double[] x = new double[1];
     private final double[] y = new double[1];
     private final int[] w = new int[1];
@@ -79,7 +77,6 @@ public final class Game {
         assets = resources.manage(new AssetManager());
         soundEngine = resources.manage(new SoundEngine());
         renderer = resources.manage(new Renderer());
-        ui = resources.manage(new UIManager());
 
         GLFW.glfwSwapInterval(1);
 
@@ -108,15 +105,6 @@ public final class Game {
 
     public Renderer getRenderer() {
         return renderer;
-    }
-
-    public UIManager getUI() {
-        return ui;
-    }
-
-    public void setUI(UIManager ui) throws Exception {
-        resources.unManage(ui);
-        this.ui = resources.manage(ui);
     }
 
     public int getWidth() {

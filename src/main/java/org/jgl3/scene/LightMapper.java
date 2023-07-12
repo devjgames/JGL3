@@ -272,7 +272,7 @@ public class LightMapper {
                     x += w;
                 }
             }
-            mesh.compile();
+            mesh.compileMesh();
         }
 
         if(rebuild) {

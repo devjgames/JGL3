@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.Vector;
 
 import org.jgl3.AssetLoader;
-import org.jgl3.AssetManager;
 import org.jgl3.BinReader;
 import org.jgl3.Game;
 import org.jgl3.IO;
@@ -16,7 +15,7 @@ public final class KeyFrameMeshLoader implements AssetLoader {
     }
 
     @Override
-    public final Object load(File file, AssetManager assets) throws Exception {
+    public final Object load(File file) throws Exception {
         Vector<KeyFrame> keyFrames = new Vector<>();
         BinReader reader = new BinReader(IO.readAllBytes(file));
         Header header = new Header(reader);

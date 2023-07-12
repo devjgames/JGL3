@@ -20,6 +20,15 @@ import org.lwjgl.glfw.GLFWKeyCallbackI;
 
 public final class UIManager extends Resource {
 
+    private static UIManager ui = null;
+
+    public static UIManager getInstance() throws Exception {
+        if(ui == null) {
+            ui = Game.getInstance().getResources().manage(new UIManager());
+        }
+        return ui;
+    }
+
     public static final Vector4f BACKGROUND = new Vector4f(0.35f, 0.35f, 0.35f, 1);
     public static final Vector4f FOREGROUND = new Vector4f(0, 0, 0, 1);
     public static final Vector4f SELECTED = new Vector4f(1, 1, 1, 1);
@@ -38,10 +47,14 @@ public final class UIManager extends Resource {
     private final Game game;
     private UIView currentView = null;
 
-    public UIManager(Font font) {
+    private UIManager() throws Exception {
         game = Game.getInstance();
 
-        this.font = font;
+        this.font = new Font(
+                IO.file("assets/font.png"), 
+                8, 12, 100, 10, 3, game.getScale() 
+                );
+
 
         GLFW.glfwSetKeyCallback(game.getWindow(), new GLFWKeyCallbackI() {
 
@@ -64,15 +77,6 @@ public final class UIManager extends Resource {
                 }
             }    
         });
-    }
-
-    public UIManager() throws Exception {
-        this(
-            new Font(
-                IO.file("assets/font.png"), 
-                8, 12, 100, 10, 3, Game.getInstance().getScale() 
-                )
-            );
     }
 
     int getPadding() {

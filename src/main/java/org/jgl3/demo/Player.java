@@ -9,6 +9,7 @@ import org.jgl3.Renderer;
 import org.jgl3.Resource;
 import org.jgl3.scene.LightMapper;
 import org.jgl3.scene.Scene;
+import org.jgl3.ui.UIManager;
 import org.lwjgl.glfw.GLFW;
 
 public class Player extends Demo {
@@ -41,7 +42,7 @@ public class Player extends Demo {
     @Override
     public boolean run() throws Exception {
         Game game = Game.getInstance();
-        Font font = game.getUI().getFont();
+        Font font = UIManager.getInstance().getFont();
         Renderer renderer = game.getRenderer();
         int s = game.getScale();
         int h = game.getHeight();

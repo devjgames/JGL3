@@ -325,9 +325,7 @@ public final class Scene implements Serializable {
                 }
             }
             if(drawAxis) {
-                float s = camera.getOffset().length() / 64;
-
-                ui.getScale().set(s, s, s);
+                ui.getScale().set(2, 2, 2);
                 ui.getPosition().set(camera.getTarget());
                 ui.calcBoundsAndTransform(camera);
                 renderer.setModel(ui.getModel());

@@ -3,7 +3,6 @@ package org.jgl3.scene;
 import java.io.File;
 
 import org.jgl3.AssetLoader;
-import org.jgl3.AssetManager;
 import org.jgl3.Game;
 import org.jgl3.IO;
 
@@ -51,7 +50,7 @@ public abstract class Animator {
 
     private static class Loader implements AssetLoader {
         @Override
-        public Object load(File file, AssetManager assets) throws Exception {
+        public Object load(File file) throws Exception {
             String[] tokens = new String(IO.readAllBytes(file)).split("\\s+");
             Animator animator = (Animator)Class.forName(tokens[0]).getConstructors()[0].newInstance();
 

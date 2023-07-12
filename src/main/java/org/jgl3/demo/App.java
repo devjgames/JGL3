@@ -12,10 +12,10 @@ import org.jgl3.Renderer;
 import org.jgl3.demo.Editor.Tools;
 import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMeshLoader;
-import org.jgl3.scene.Mesh;
 import org.jgl3.scene.Node;
 import org.jgl3.scene.ParticleSystem;
 import org.jgl3.scene.Renderable;
+import org.jgl3.scene.Scene;
 import org.jgl3.scene.Node.Visitor;
 import org.jgl3.ui.UIManager;
 
@@ -28,10 +28,14 @@ public class App {
     }
 
     public static Tools createTools() {
-        return (ui, sceneFile, scene, selection, reset) -> {
+        return (reset) -> {
             Game game = Game.getInstance();
+            Editor editor = Editor.getInstance();
+            UIManager ui = UIManager.getInstance();
             final Vector<Node> detach = new Vector<>();
             final BoundingBox bounds = new BoundingBox();
+            Node selection = editor.getSelection();
+            Scene scene = editor.getScene();
             Visitor clearTorches = (n) -> {
                 Renderable renderable = n.getRenderable();
 
@@ -89,6 +93,17 @@ public class App {
                 if(ui.button("Tools.clear.torches.button", 0, "Clear Torches", false)) {
                     scene.getRoot().traverse(clearTorches); 
                 }
+                ui.addRow(5);
+                if(ui.button("Tools.remove.empty.nodes.button", 0, "Remove Empty", false)) {
+                    scene.getRoot().traverse((n) -> {
+                        if(n.getChildCount() == 0) {
+                            if(n.getRenderable() == null && !n.hasMesh() && !n.isLight()) {
+                                detach.add(n);
+                            }
+                        }
+                        return true;
+                    });
+                }
             }
 
             for(Node n : detach) {
@@ -128,7 +143,7 @@ public class App {
                     }
                 } else {
                     Renderer renderer = game.getRenderer();
-                    UIManager ui = game.getUI();
+                    UIManager ui = UIManager.getInstance();
                     Object result;
                     
                     GFX.clear(0.2f, 0.2f, 0.2f, 1);
@@ -163,7 +178,6 @@ public class App {
         KeyFrameMeshLoader.registerAssetLoader();
         ParticleSystem.registerAssetLoader();
         Animator.registerAssetLoader();
-        Mesh.registerAssetLoader();
     }
 
     public static void main(String[] args) throws Exception {
