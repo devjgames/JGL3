@@ -23,7 +23,6 @@ public final class Renderer extends Resource {
     private final int uProjection, uView, uModel, uModelIT;
     private final int uTexture, uTextureEnabled;
     private final int uTexture2, uTexture2Enabled;
-    private final int uLayerColor;
     private final int uTextureUnit;
     private final Matrix4f temp = new Matrix4f();
     private FloatBuffer vBuf = BufferUtils.createFloatBuffer(COMPONENTS * 3);
@@ -40,7 +39,7 @@ public final class Renderer extends Resource {
             "vsInNormal", 3,
             "vsInColor", 4
         );
-        pipeline.setColorLocations("fsOutColor1", "fsOutColor2", "fsOutColor3");
+        pipeline.setColorLocations("fsOutColor");
         vao = new VertexArray(false, 3, 2, 2, 3, 4);
         for(int i = 0; i != MAX_LIGHTS; i++) {
             uLightPosition[i] = pipeline.getUniform("uLightPosition[" + i + "]");
@@ -65,7 +64,6 @@ public final class Renderer extends Resource {
         uTextureEnabled = pipeline.getUniform("uTextureEnabled");
         uTexture2 = pipeline.getUniform("uTexture2");
         uTexture2Enabled = pipeline.getUniform("uTexture2Enabled");
-        uLayerColor = pipeline.getUniform("uLayerColor");
         uTextureUnit = pipeline.getUniform("uTextureUnit");
     }
 
@@ -82,7 +80,6 @@ public final class Renderer extends Resource {
         setWarp(false);
         setWarpAmplitude(0, 0, 0);
         setWarpTime(0);
-        setLayerColor(0, 0, 0, 0);
         setProjection(temp.identity());
         setView(temp);
         setModel(temp);
@@ -172,14 +169,6 @@ public final class Renderer extends Resource {
 
     public void setWarpFrequency(float frequency) {
         pipeline.set(uWarpFrequency, frequency);
-    }
-
-    public void setLayerColor(float r, float g, float b, float a) {
-        pipeline.set(uLayerColor, r, g, b, a);
-    }
-
-    public void setLayerColor(Vector4f color) {
-        pipeline.set(uLayerColor, color);
     }
 
     public void setProjection(Matrix4f projection) {

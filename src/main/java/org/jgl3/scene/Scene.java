@@ -303,7 +303,6 @@ public final class Scene implements Serializable {
         renderer.setLightingEnabled(false);
         renderer.setTexture2(null);
         renderer.setTexture(null);
-        renderer.setLayerColor(0, 0, 0, 0);
         renderer.setWarp(false);
         renderer.setTextureUnit(0);
 
@@ -317,7 +316,6 @@ public final class Scene implements Serializable {
             renderer.setTexture(ui.getTexture());
             if(drawLights) {
                 for(Node light : lights) {
-                    ui.getScale().set(2, 2, 2);
                     ui.getPosition().set(light.getAbsolutePosition());
                     ui.calcBoundsAndTransform(camera);
                     renderer.setModel(ui.getModel());
@@ -325,7 +323,6 @@ public final class Scene implements Serializable {
                 }
             }
             if(drawAxis) {
-                ui.getScale().set(2, 2, 2);
                 ui.getPosition().set(camera.getTarget());
                 ui.calcBoundsAndTransform(camera);
                 renderer.setModel(ui.getModel());
@@ -350,7 +347,6 @@ public final class Scene implements Serializable {
         renderer.setAmbientColor(renderable.getAmbientColor());
         renderer.setDiffuseColor(renderable.getDiffuseColor());
         renderer.setColor(renderable.getColor());
-        renderer.setLayerColor(renderable.getLayerColor());
         renderer.setWarp(renderable.isWarpEnabled());
         renderer.setWarpAmplitude(renderable.getWarpAmplitude());
         renderer.setWarpTime(game.getTotalTime() * renderable.getWarpSpeed());

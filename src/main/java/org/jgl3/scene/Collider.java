@@ -28,7 +28,7 @@ public final class Collider {
     private final float[] time = new float[1];
     private final Matrix4f groundMatrix = new Matrix4f();
     private float radius = 24;
-    private float gravity = 1000;
+    private float gravity = 5000;
     private float groundSlope = 60;
     private float roofSlope = 45;
     private float intersectionBuffer = 1;

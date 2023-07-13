@@ -1,82 +1,88 @@
 package org.jgl3.demo;
 
-import java.io.File;
-
-import org.jgl3.Font;
 import org.jgl3.Game;
 import org.jgl3.IO;
-import org.jgl3.Renderer;
-import org.jgl3.Resource;
-import org.jgl3.scene.LightMapper;
+import org.jgl3.Sound;
+import org.jgl3.scene.Animator;
+import org.jgl3.scene.Collider;
+import org.jgl3.scene.Node;
 import org.jgl3.scene.Scene;
-import org.jgl3.ui.UIManager;
-import org.lwjgl.glfw.GLFW;
+import org.joml.Vector3f;
 
-public class Player extends Demo {
+public class Player extends Animator {
+    
+    private final Collider collider = new Collider();
+    private Sound painSound;
+    private boolean dead;
+    private final Vector3f start = new Vector3f();
+    private final Vector3f startDirection = new Vector3f();
 
-    private final File file;
-    private Scene scene = null;
-    private int tested = 0;
-    private String info = "";
-
-    public Player(File file) {
-        this.file = file;
-    }
-
-    public void setTested(int tested) {
-        this.tested = tested;
-    }
-
-    public void setInfo(String info) {
-        this.info = info;
+    public Player() throws Exception {
+        collider.setContactListener((tri) -> {
+            if(tri.getTag() == 2) {
+                kill();
+            }
+        });
     }
 
     @Override
-    public void init() throws Exception {
-        tested = 0;
-        info = "";
+    public void init(Scene scene, Node node) throws Exception {
+        Demo demo = App.getDemo();
 
-        scene = Scene.load(file, new LightMapper());
-    }
+        if(demo instanceof Editor) {
+            return;
+        }
 
-    @Override
-    public boolean run() throws Exception {
         Game game = Game.getInstance();
-        Font font = UIManager.getInstance().getFont();
-        Renderer renderer = game.getRenderer();
-        int s = game.getScale();
-        int h = game.getHeight();
 
-        scene.render(game.getAspectRatio());
-        renderer.initSprites();
-        renderer.setFont(font);
-        renderer.beginTriangles();
-        renderer.push(
-            "FPS = " + game.getFrameRate() + "\n" +
-            "RES = " + Resource.getInstances() + "\n" +
-            "NOD = " + scene.getNodesRenderer() + "\n" +
-            "TRI = " + scene.getTrianglesRendered() + "\n" +
-            "COL = " + scene.getCollidableTriangles() + "\n" +
-            "TST = " + tested + "\n" +
-            "ESC = Quit",
-            5 * s, 5 * s, 5 * s, 1, 1, 1, 1
-            );
-        renderer.push(info, 5 * s, h - 5 * s - font.getCharHeight() * font.getScale(), 0, 1, 1, 1, 1);
-        renderer.endTriangles();
-        renderer.end();
+        node.clearCompiledMesh();
+        node.clearMesh();
+        node.getRotation().getColumn(0, startDirection);
+        start.set(node.getPosition());
 
-        scene.updateAnimators();
+        scene.getCamera().getEye().set(start);
+        scene.getCamera().getEye().add(startDirection, scene.getCamera().getTarget());
+        scene.getCamera().getUp().set(0, 1, 0);
 
-        return !game.isKeyDown(GLFW.GLFW_KEY_ESCAPE);
+        start.set(node.getPosition());
+        painSound = game.getAssets().load(IO.file("assets/sound/pain.wav"));
+        painSound.setVolume(0.25f);
+
+        dead = false;
+
+        if(demo instanceof ScenePlayer) {
+            ((ScenePlayer)demo).setInfo("Press left & right mouse buttons to move forwards & backwards");
+        }
+
+        game.enableFPSMouse();
     }
 
-
     @Override
-    public String toString() {
-        String name = IO.fileNameWithOutExtension(file);
+    public void animate(Scene scene, Node node) throws Exception {
+        Demo demo = App.getDemo();
 
-        name = Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        if(demo instanceof Editor) {
+            return;
+        }
 
-        return name;
+        if(dead) {
+            if(!painSound.isPlaying()) {
+                scene.getCamera().getEye().set(start);
+                scene.getCamera().getEye().add(startDirection, scene.getCamera().getTarget());
+                scene.getCamera().getUp().set(0, 1, 0);
+                dead = false;
+            }
+        } else {
+            collider.move(scene);
+
+            if(demo instanceof ScenePlayer) {
+                ((ScenePlayer)demo).setTested(collider.getTested());
+            }
+        }
+    }
+
+    private void kill() {
+        painSound.play(false);
+        dead = true;
     }
 }

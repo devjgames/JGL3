@@ -214,7 +214,7 @@ public class Editor extends Demo {
                     Node node = copy(clipboard);
 
                     selection = node;
-                    scene.getRoot().addChild(scene, selection);
+                    scene.getRoot().addChild(selection);
                     editor = NODE_EDITOR;
                     resetNodeEditor = true;
                 }
@@ -227,7 +227,7 @@ public class Editor extends Demo {
                 selection = new Node();
                 selection.setLight(true);
                 selection.setName("light");
-                scene.getRoot().addChild(scene, selection);
+                scene.getRoot().addChild(selection);
                 editor = NODE_EDITOR;
                 resetNodeEditor = true;
             }
@@ -295,7 +295,6 @@ public class Editor extends Demo {
                                 Node uiNode = scene.getUI();
 
                                 uiNode.getPosition().set(n.getAbsolutePosition());
-                                uiNode.getScale().set(2, 2, 2);
                                 uiNode.calcBoundsAndTransform(scene.getCamera());
                                 if(bounds.touches(uiNode.getBounds())) {
                                     for(int i = 0; i != uiNode.getTriangleCount(); i++) {
@@ -376,9 +375,9 @@ public class Editor extends Demo {
                     Node parent = selection.getParent();
 
                     if(parent != scene.getRoot() && parent.getChildCount() == 1) {
-                        parent.detachFromParent(scene);
+                        parent.detachFromParent();
                     } else {
-                        selection.detachFromParent(scene);
+                        selection.detachFromParent();
                     }
                     editor = -1;
                     selection = null;
@@ -458,7 +457,7 @@ public class Editor extends Demo {
 
                         node.getPosition().y -= mesh.getFrame(0).getBounds().getMin().z;
                         node.getRotation().rotate((float)Math.toRadians(-90), 1, 0, 0);
-                        parent.addChild(scene, node);
+                        parent.addChild(node);
                         node = parent;
                     } else if(IO.extension(file).equals(".par")) {
                         node.setVertexColorEnabled(true);
@@ -466,7 +465,7 @@ public class Editor extends Demo {
                     node.setName(IO.fileNameWithOutExtension(file));
                 }
                 selection = node;
-                scene.getRoot().addChild(scene, selection);
+                scene.getRoot().addChild(selection);
                 editor = NODE_EDITOR;
                 resetNodeEditor = true;
             }

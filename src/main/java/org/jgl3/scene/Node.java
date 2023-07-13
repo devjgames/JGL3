@@ -78,7 +78,7 @@ public final class Node implements Serializable {
                         mesh = new Node();
                         mesh.setName(name);
                         mesh.setTexture(texture);
-                        node.addChild(null, mesh);
+                        node.addChild(mesh);
                     }
                 } else if (tLine.startsWith("v ")) {
                     Vector3f v = new Vector3f(
@@ -104,7 +104,7 @@ public final class Node implements Serializable {
                     if(mesh == null) {
                         mesh = new Node();
                         mesh.setName("");
-                        node.addChild(null, mesh);
+                        node.addChild(mesh);
                     }
                     int bV = mesh.getVertexCount();
                     int[] indices = new int[tokens.length - 1];
@@ -176,7 +176,6 @@ public final class Node implements Serializable {
     private final Vector4f ambientColor = new Vector4f(0, 0, 0, 1);
     private final Vector4f diffuseColor = new Vector4f(1, 1, 1, 1);
     private final Vector4f color = new Vector4f(1, 1, 1, 1);
-    private final Vector4f layerColor = new Vector4f(0, 0, 0, 0);
     private final Vector3f absolutePosition = new Vector3f();
     private final Vector3f position = new Vector3f();
     private final Vector3f scale = new Vector3f(1, 1, 1);
@@ -412,8 +411,6 @@ public final class Node implements Serializable {
         if(animator != null) {
             animator = animator.newInstance();
             animator.init(scene, this);
-        } else if(this.animator != null) {
-            this.animator.detach(scene, this);
         }
         this.animator = animator;
         return this;
@@ -451,10 +448,6 @@ public final class Node implements Serializable {
 
     public Vector4f getColor() {
         return color;
-    }
-
-    public Vector4f getLayerColor() {
-        return layerColor;
     }
     
     public Vector3f getAbsolutePosition() {
@@ -533,27 +526,23 @@ public final class Node implements Serializable {
         return children.lastElement();
     }
 
-    public Node detachFromParent(Scene scene) throws Exception {
+    public Node detachFromParent() throws Exception {
         if(parent != null) {
             parent.children.remove(this);
             parent = null;
-
-            if(animator != null) {
-                animator.detach(scene, this);
-            }
         }
         return this;
     }
 
-    public Node addChild(Scene scene, Node child) throws Exception {
-        child.detachFromParent(scene).parent = this;
+    public Node addChild(Node child) throws Exception {
+        child.detachFromParent().parent = this;
         children.add(child);
         return this;
     }
 
     public Node detachAllChildren(Scene scene) throws Exception {
         while(!children.isEmpty()) {
-            children.get(0).detachFromParent(scene);
+            children.get(0).detachFromParent();
         }
         return this;
     }

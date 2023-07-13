@@ -9,26 +9,12 @@ import org.jgl3.IO;
 public abstract class Animator {
     
     private File file = null;
-    private String[] tokens;
 
     public Animator() {
     }
 
-    void setFileAndTokens(File file, String[] tokens) {
-        this.file = file;
-        this.tokens = tokens;
-    }
-
     public final File getFile() {
         return file;
-    }
-
-    public final int getTokenCount() {
-        return tokens.length;
-    }
-
-    public final String getToken(int i) {
-        return tokens[i];
     }
 
     public void init(Scene scene, Node node) throws Exception {
@@ -37,13 +23,10 @@ public abstract class Animator {
     public void animate(Scene scene, Node node) throws Exception {
     }
 
-    public void detach(Scene scene, Node node) throws Exception {
-    }
-
     public final Animator newInstance() throws Exception {
         Animator animator = (Animator)getClass().getConstructors()[0].newInstance();
 
-        animator.setFileAndTokens(file, tokens);
+        animator.file = file;
 
         return animator;
     }
@@ -54,7 +37,7 @@ public abstract class Animator {
             String[] tokens = new String(IO.readAllBytes(file)).split("\\s+");
             Animator animator = (Animator)Class.forName(tokens[0]).getConstructors()[0].newInstance();
 
-            animator.setFileAndTokens(file, tokens);
+            animator.file = file;
 
             return animator;
         }

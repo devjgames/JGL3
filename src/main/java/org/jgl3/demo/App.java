@@ -9,6 +9,7 @@ import org.jgl3.GFX;
 import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Renderer;
+import org.jgl3.Texture;
 import org.jgl3.demo.Editor.Tools;
 import org.jgl3.scene.Animator;
 import org.jgl3.scene.KeyFrameMeshLoader;
@@ -51,13 +52,15 @@ public class App {
 
             detach.removeAllElements();
 
-            if(selection != null) {
-                if(ui.button("Tools.place.torches.button", 0, "Place Torches", false)) {
+            if(ui.button("Tools.place.torches.button", 0, "Place Torches", false)) {
 
-                    scene.getRoot().traverse(clearTorches); 
+                scene.getRoot().traverse(clearTorches); 
 
-                    selection.traverse((n) -> {
-                        if(n.hasMesh() && n.getTexture().getFile().equals(IO.file("assets/meshes/torch.png"))) {
+                scene.getRoot().traverse((n) -> {
+                    Texture texture = n.getTexture();
+
+                    if(texture != null) {
+                        if(n.hasMesh() && texture.getFile().equals(IO.file("assets/meshes/torch.png"))) {
                             for(int i = 0; i != n.getFaceCount(); i++) {
                                 float y = n.getVertexComponent(n.getFaceVertex(i, 0), 8);
 
@@ -82,32 +85,32 @@ public class App {
                                     node.setRenderable(node.getRenderable().newInstance());
                                     bounds.getCenter(node.getPosition());
 
-                                    scene.getRoot().addChild(scene, node);
+                                    scene.getRoot().addChild(node);
                                 }
                             }
                         }
-                        return true;
-                    });
-                }
-                ui.addRow(5);
-                if(ui.button("Tools.clear.torches.button", 0, "Clear Torches", false)) {
-                    scene.getRoot().traverse(clearTorches); 
-                }
-                ui.addRow(5);
-                if(ui.button("Tools.remove.empty.nodes.button", 0, "Remove Empty", false)) {
-                    scene.getRoot().traverse((n) -> {
-                        if(n.getChildCount() == 0) {
-                            if(n.getRenderable() == null && !n.hasMesh() && !n.isLight()) {
-                                detach.add(n);
-                            }
+                    }
+                    return true;
+                });
+            }
+            ui.addRow(5);
+            if(ui.button("Tools.clear.torches.button", 0, "Clear Torches", false)) {
+                scene.getRoot().traverse(clearTorches); 
+            }
+            ui.addRow(5);
+            if(ui.button("Tools.remove.empty.nodes.button", 0, "Remove Empty", false)) {
+                scene.getRoot().traverse((n) -> {
+                    if(n.getChildCount() == 0) {
+                        if(n.getRenderable() == null && !n.hasMesh() && !n.isLight()) {
+                            detach.add(n);
                         }
-                        return true;
-                    });
-                }
+                    }
+                    return true;
+                });
             }
 
             for(Node n : detach) {
-                n.detachFromParent(scene);
+                n.detachFromParent();
             }
             detach.removeAllElements();
 
@@ -183,7 +186,7 @@ public class App {
     public static void main(String[] args) throws Exception {
         new App(1200, 700, true,
             new Editor(createTools()),
-            new Player(IO.file("assets/scenes/scene1.scn"))
+            new ScenePlayer(IO.file("assets/scenes/scene1.scn"))
         );
     }
 }
