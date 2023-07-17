@@ -65,156 +65,7 @@ public class LightMapper {
             for(int i = 0; i != mesh.getFaceCount(); i++) {
                 int vc = mesh.getFaceVertexCount(i);
 
-                if(vc != 4) {
-                    int i1 = 0;
-                    int i2 = 1;
-                    int i3 = 2;
-                    boolean found = false;
-
-                    for(int j = 0; j != vc; j++) {
-                        int a = j;
-                        int b = (j + 1) % vc;
-                        int c = (j + 2) % vc;
-
-                        Vector3f p1 = new Vector3f(
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, a), 0),
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, a), 1),
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, a), 2)
-                        );
-                        Vector3f p2 = new Vector3f(
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, b), 0),
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, b), 1),
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, b), 2)
-                        );
-                        Vector3f p3 = new Vector3f(
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, c), 0),
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, c), 1),
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, c), 2)
-                        );
-                        Vector3f e1 = p1.sub(p2, new Vector3f());
-                        Vector3f e2 = p3.sub(p2, new Vector3f());
-
-                        float dot = e1.normalize(new Vector3f()).dot(e2.normalize(new Vector3f()));
-
-                        dot = Math.max(-0.999f, Math.min(0.999f, dot));
-
-                        float degrees = (float)(Math.acos(dot) * 180 / Math.PI);
-
-                        if(Math.abs(degrees - 90) > 0.1f) {
-                            continue;
-                        }
-
-                        boolean contained = true;
-
-                        for(int k = 0; k != vc; k++) {
-                            Vector3f p = new Vector3f(
-                                mesh.getVertexComponent(mesh.getFaceVertex(i, k), 0),
-                                mesh.getVertexComponent(mesh.getFaceVertex(i, k), 1),
-                                mesh.getVertexComponent(mesh.getFaceVertex(i, k), 2)
-                            );
-                            float u = p.sub(p2, new Vector3f()).dot(e1.normalize(new Vector3f()));
-                            float v = p.sub(p2, new Vector3f()).dot(e2.normalize(new Vector3f()));
-
-                            if(u < 0 || v < 0 || u > e1.length() || v > e2.length()) {
-                                contained = false;
-                                break;
-                            }
-                        }
-
-                        if(!contained) {
-                            continue;
-                        }
-
-                        i1 = a;
-                        i2 = b;
-                        i3 = c;
-
-                        found = true;
-
-                        break;
-                    }
-
-                    if(!found) {
-                        Log.put(0, "Could not map polygon, did not find a 90 degree corner that fits points to a quad ...");
-                        for(int j = 0; j != vc; j++) {
-                            mesh.setVertexComponent(mesh.getFaceVertex(i, j), 5, 0.5f * psx);
-                            mesh.setVertexComponent(mesh.getFaceVertex(i, j), 6, 0.5f * psy);
-                        }
-                        continue;
-                    }
-
-                    Vector3f p1 = new Vector3f(
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i1), 0),
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i1), 1),
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i1), 2)
-                    );
-                    Vector3f p2 = new Vector3f(
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i2), 0),
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i2), 1),
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i2), 2)
-                    );
-                    Vector3f p3 = new Vector3f(
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i3), 0),
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i3), 1),
-                        mesh.getVertexComponent(mesh.getFaceVertex(i, i3), 2)
-                    );
-
-                    p1.mulPosition(mesh.getModel());
-                    p2.mulPosition(mesh.getModel());
-                    p3.mulPosition(mesh.getModel());
-
-                    Vector3f e1 = p1.sub(p2, new Vector3f());
-                    Vector3f e2 = p3.sub(p2, new Vector3f());
-                    Vector3f n = e2.cross(e1, new Vector3f()).normalize();
-
-                    int w = (int)Math.ceil(e1.length()) / 16 + 1;
-                    int h = (int)Math.ceil(e2.length()) / 16 + 1;
-
-                    if(x + w >= scene.getLightMapWidth()) {
-                        x = 0;
-                        y += maxH;
-                        maxH = 0;
-                    }
-                    maxH = Math.max(maxH, h);
-                    if(y + maxH >= scene.getLightMapHeight()) {
-                        Log.put(0, "Failed to allocate light map tile");
-                        return;
-                    }
-
-                    for(int j = 0; j != vc; j++) {
-                        Vector3f p = new Vector3f(
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, j), 0),
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, j), 1),
-                            mesh.getVertexComponent(mesh.getFaceVertex(i, j), 2)
-                        );
-
-                        p.mulPosition(mesh.getModel());
-
-                        float u = p.sub(p2, new Vector3f()).dot(e1.normalize(new Vector3f()));
-                        float v = p.sub(p2, new Vector3f()).dot(e2.normalize(new Vector3f()));
-
-                        u += 8;
-                        u /= 16;
-                        u += x;
-                        u *= psx;
-                        v += 8;
-                        v /= 16;
-                        v += y;
-                        v *= psy;
-
-                        mesh.setVertexComponent(mesh.getFaceVertex(i, j), 5, u);
-                        mesh.setVertexComponent(mesh.getFaceVertex(i, j), 6, v);
-                    }
-
-                    Vector3f a = p2;
-                    Vector3f b = p1;
-                    Vector3f c = p3;
-                    Vector3f d = p2.add(e1, new Vector3f()).add(e2, new Vector3f());
-
-                    tiles.add(new Object[] { mesh, x, y, w, h, a, b, c, d, n });
-
-                    x += w;
-                } else {
+                if(vc == 4) {
                     Vector3f p1 = new Vector3f(
                         mesh.getVertexComponent(mesh.getFaceVertex(i, 0), 0),
                         mesh.getVertexComponent(mesh.getFaceVertex(i, 0), 1),
@@ -270,6 +121,12 @@ public class LightMapper {
                     tiles.add(new Object[] { mesh, x, y, w, h, p1, p2, p3, p4, n });
 
                     x += w;
+                } else {
+                    Log.put(0, "Could not map polygon, polygon is not a quad ...");
+                    for(int j = 0; j != vc; j++) {
+                        mesh.setVertexComponent(mesh.getFaceVertex(i, j), 5, 0.5f * psx);
+                        mesh.setVertexComponent(mesh.getFaceVertex(i, j), 6, 0.5f * psy);
+                    }
                 }
             }
             mesh.compileMesh();
