@@ -23,6 +23,10 @@ public class ScenePlayer extends Demo {
         this.file = file;
     }
 
+    public File getFile() {
+        return file;
+    }
+
     public void setTested(int tested) {
         this.tested = tested;
     }
@@ -36,7 +40,7 @@ public class ScenePlayer extends Demo {
         tested = 0;
         info = "";
 
-        scene = Scene.load(file, new LightMapper());
+        scene = Scene.load(file, false, new LightMapper());
     }
 
     @Override
@@ -65,7 +69,7 @@ public class ScenePlayer extends Demo {
         renderer.endTriangles();
         renderer.end();
 
-        scene.updateAnimators();
+        scene.update();
 
         return !game.isKeyDown(GLFW.GLFW_KEY_ESCAPE);
     }

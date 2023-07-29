@@ -1,11 +1,6 @@
 package org.jgl3.scene;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.Vector;
 
 import org.jgl3.BlendState;
@@ -18,9 +13,7 @@ import org.jgl3.Log;
 import org.jgl3.Renderer;
 import org.joml.Vector4f;
 
-public final class Scene implements Serializable {
-
-    private static final long serialVersionUID = 1234567L;
+public final class Scene {
 
     public static final int ASSET_TAG = 1;
 
@@ -40,18 +33,17 @@ public final class Scene implements Serializable {
     private DepthState lastDepthState = null;
     private CullState lastCullState = null;
     private BlendState lastBlendState = null;
-    private transient Scene me;
     private float aoStrength = 2;
     private float aoLength = 32;
     private float sampleRadius = 32;
     private int sampleCount = 64;
     private int lightMapWidth = 128;
     private int lightMapHeight = 128;
-    private boolean lightMapLambert = true;
     private boolean textureEnabled = true;
+    private final boolean inDesign;
 
-    public Scene() {
-        me = this;
+    public Scene(boolean inDesign) {
+        this.inDesign = inDesign;
     }
 
     public int getNodesRenderer() {
@@ -120,15 +112,6 @@ public final class Scene implements Serializable {
         return this;
     }
 
-    public boolean isLightMapLambert() {
-        return lightMapLambert;
-    }
-
-    public Scene setLightMapLambert(boolean lambert) {
-        lightMapLambert = lambert;
-        return this;
-    }
-
     public boolean getDrawLights() {
         return drawLights;
     }
@@ -177,9 +160,13 @@ public final class Scene implements Serializable {
         return this;
     }
 
+    public boolean getInDesign() {
+        return inDesign;
+    }
+
     public Scene loadUI() throws Exception {
         Log.put(1, "Loading ui node ...");
-        ui = Game.getInstance().getAssets().load(IO.file("assets/ui/ui.obj"));
+        ui = NodeBuilder.load(IO.file("assets/ui/ui.obj")).build();
         ui.getTexture().toLinear(true);
         return this;
     }
@@ -191,17 +178,6 @@ public final class Scene implements Serializable {
     public Scene removeUI() {
         ui = null;
         return this;
-    }
-
-    public void updateAnimators() throws Exception {
-        root.traverse((n) -> {
-            Animator animator = n.getAnimator();
-
-            if(animator != null) {
-                animator.animate(me, n);
-            }
-            return true;
-        });
     }
 
     public void render(float aspectRatio) throws Exception {
@@ -368,59 +344,67 @@ public final class Scene implements Serializable {
         nodesRendered++;
     }
 
+    public Scene update() throws Exception {
+        for(int i = 0; i != root.getChildCount(); i++) {
+            root.getChild(i).update(this);
+        }
+        return this;
+    }
+
     @Override
     public String toString() {
         return "Scene";
     }
 
-    private void initAnimators() throws Exception {
-        getRoot().traverse((n) -> {
-            Animator animator = n.getAnimator();
+    public void save(File file) throws Exception {
+        StringBuilder b = new StringBuilder(1000);
 
-            if(animator != null) {
-                animator.init(this, n);
-            }
-            return true;
-        });
+        for(int i = 0; i != getRoot().getChildCount(); i++) {
+            Node node = getRoot().getChild(i);
+            ArgumentWriter writer = new ArgumentWriter();
+
+            node.serialize(this, writer);
+
+            b.append("node " + node.getClass().getName() + " " + writer.toString() + "\n");
+        }
+        IO.writeAllBytes(b.toString().getBytes(), file);
     }
 
-    public static void save(Scene scene, File file) throws Exception {
-        ObjectOutputStream output = null;
+    public static Scene load(File file, boolean inDesign, LightMapper lightMapper) throws Exception {
+        String[] lines = new String(IO.readAllBytes(file)).split("\\n+");
+        Scene scene = new Scene(inDesign);
 
-        try {
-            output = new ObjectOutputStream(new FileOutputStream(file));
-            output.writeObject(scene);
-        } finally {
-            if(output != null) {
-                output.close();
+        for(String line : lines) {
+            String tLine = line.trim();
+            String[] tokens = tLine.split("\\s+");
+
+            if(tLine.startsWith("node ")) {
+                try {
+                    Node node = (Node)Class.forName(tokens[1]).getConstructors()[0].newInstance();
+                    ArgumentReader reader = new ArgumentReader(tokens);
+
+                    node.deserialize(scene, reader);
+                    scene.getRoot().addChild(node);
+                    node.init(scene);
+                } catch(Exception ex) {
+                    ex.printStackTrace();
+                    Log.put(0, tLine);
+                }
             }
         }
-    }
 
-    public static Scene load(File file, LightMapper lightMapper) throws Exception {
-        ObjectInputStream input = null;
-        Scene scene = null;
+        lightMapper.map(scene, IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png"), false);
 
-        try {
-            input = new ObjectInputStream(new FileInputStream(file));
-            scene = (Scene)input.readObject();
-            scene.me = scene;
-            scene.initAnimators();
-
-            lightMapper.map(scene, IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png"), false);
-        } finally {
-            if(input != null) {
-                input.close();
-            }
-        }
         return scene;
     }
 
-    public static void create(File file) throws Exception {  
+    public static boolean create(File file, boolean inDesign) throws Exception {  
         if(!file.exists()) {
             Log.put(1, "Creating scene - " + file.getPath());
-            save(new Scene(), file);
+            new Scene(inDesign).save(file);
+            return true;
         }
+        return false;
     }
 
 }

@@ -215,10 +215,7 @@ public class LightMapper {
 
                                 Vector4f color2 = new Vector4f(mesh.getDiffuseColor()).mul(light.getLightColor());
 
-                                color2.mul(sv * atten);
-                                if(scene.isLightMapLambert()) {
-                                    color2.mul(Math.min(1, lDotN));
-                                }
+                                color2.mul(sv * atten).mul(Math.min(1, lDotN));
                                 color.add(color2);
                             }
                         }

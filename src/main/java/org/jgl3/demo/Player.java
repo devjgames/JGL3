@@ -3,13 +3,15 @@ package org.jgl3.demo;
 import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Sound;
-import org.jgl3.scene.Animator;
+import org.jgl3.scene.ArgumentReader;
+import org.jgl3.scene.ArgumentWriter;
 import org.jgl3.scene.Collider;
 import org.jgl3.scene.Node;
+import org.jgl3.scene.NodeBuilder;
 import org.jgl3.scene.Scene;
 import org.joml.Vector3f;
 
-public class Player extends Animator {
+public class Player extends Node {
     
     private final Collider collider = new Collider();
     private Sound painSound;
@@ -26,25 +28,25 @@ public class Player extends Animator {
     }
 
     @Override
-    public void init(Scene scene, Node node) throws Exception {
+    public Node init(Scene scene) throws Exception {
         Demo demo = App.getDemo();
 
         if(demo instanceof Editor) {
-            return;
+            addChild(NodeBuilder.load(IO.file("assets/ui/ui.obj")).build());
+            getChild(0).setTextureLinear(true);
+            return this;
         }
 
         Game game = Game.getInstance();
 
-        node.clearCompiledMesh();
-        node.clearMesh();
-        node.getRotation().getColumn(0, startDirection);
-        start.set(node.getPosition());
+        getRotation().getColumn(0, startDirection);
+        start.set(getPosition());
 
         scene.getCamera().getEye().set(start);
         scene.getCamera().getEye().add(startDirection, scene.getCamera().getTarget());
         scene.getCamera().getUp().set(0, 1, 0);
 
-        start.set(node.getPosition());
+        start.set(getPosition());
         painSound = game.getAssets().load(IO.file("assets/sound/pain.wav"));
         painSound.setVolume(0.25f);
 
@@ -55,14 +57,16 @@ public class Player extends Animator {
         }
 
         game.enableFPSMouse();
+
+        return this;
     }
 
     @Override
-    public void animate(Scene scene, Node node) throws Exception {
+    public Node update(Scene scene) throws Exception {
         Demo demo = App.getDemo();
 
         if(demo instanceof Editor) {
-            return;
+            return this;
         }
 
         if(dead) {
@@ -79,6 +83,25 @@ public class Player extends Animator {
                 ((ScenePlayer)demo).setTested(collider.getTested());
             }
         }
+        return this;
+    }
+
+    @Override
+    public Node serialize(Scene scene, ArgumentWriter writer) throws Exception {
+
+        writer.write(getPosition());
+        writer.write(getRotation());
+
+        return this;
+    }
+
+    @Override
+    public Node deserialize(Scene scene, ArgumentReader reader) throws Exception {
+
+        reader.readVector3f(getPosition());
+        reader.readRotation(getRotation());
+
+        return this;
     }
 
     private void kill() {

@@ -1,0 +1,7 @@
+node org.jgl3.demo.Player  0.0 56.0 0.0 -0.7071068 0.7071068
+node org.jgl3.demo.Light  79.0 46.0 -79.0 0.5 0.75 1.0 1.0 175.0
+node org.jgl3.demo.Map  assets/maps/scene1.obj 128 128 2.0 32.0 32.0 64 0.25 0.25 0.25 1.0
+node org.jgl3.demo.Light  -192.0 32.0 64.0 1.0 0.75 0.5 1.0 500.0
+node org.jgl3.demo.Light  -128.0 208.0 -320.0 1.0 0.75 0.5 1.0 400.0
+node org.jgl3.demo.Light  64.0 176.0 -192.0 1.0 0.75 0.5 1.0 200.0
+node org.jgl3.demo.NPC  assets/npc/babyboom.md2 99.0 0.0 -99.0 0.6754633 -0.7373936

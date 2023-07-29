@@ -1,156 +1,25 @@
 package org.jgl3.scene;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Hashtable;
 import java.util.Vector;
 
-import org.jgl3.AssetLoader;
 import org.jgl3.BlendState;
 import org.jgl3.BoundingBox;
 import org.jgl3.CullState;
 import org.jgl3.DepthState;
 import org.jgl3.Game;
-import org.jgl3.IO;
 import org.jgl3.Log;
 import org.jgl3.OctTree;
 import org.jgl3.Renderer;
 import org.jgl3.Texture;
 import org.jgl3.Triangle;
 import org.joml.Matrix4f;
-import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-public final class Node implements Serializable {
-
-    private static final long serialVersionUID = 1234567L;
+public class Node {
 
     public static interface Visitor {
         boolean visit(Node node) throws Exception;
-    }
-
-    private static class NodeLoader implements AssetLoader {
-
-        @Override
-        public Object load(File file) throws Exception {
-            String[] lines = new String(IO.readAllBytes(file)).split("\\n+");
-            Vector<Vector3f> vList = new Vector<>();
-            Vector<Vector2f> tList = new Vector<>();
-            Vector<Vector3f> nList = new Vector<>();
-            Hashtable<String, Texture> textures = new Hashtable<>();
-            Node node = new Node();
-            Node mesh = null;
-
-            for (String line : lines) {
-                String tLine = line.trim();
-                String[] tokens = tLine.split("\\s+");
-
-                if(tLine.startsWith("mtllib ")) {
-                    File mFile = IO.file(file.getParentFile(), tLine.substring(6).trim());
-                    String[] mLines = new String(IO.readAllBytes(mFile)).split("\\n+");
-                    String mName = null;
-
-                    for(String mLine : mLines) {
-                        String tmLine = mLine.trim();
-                        
-                        if(tmLine.startsWith("newmtl ")) {
-                            mName = tmLine.substring(6).trim();
-                        } else if(tmLine.startsWith("map_Kd ")) {
-                            File tFile = IO.file(file.getParentFile(), tmLine.substring(6).trim());
-
-                            textures.put(mName, Game.getInstance().getAssets().load(tFile));
-                        }
-                    }
-                } else if(tLine.startsWith("usemtl ")) {
-                    String name = tLine.substring(6).trim();
-                    Texture texture = null;
-
-                    if(textures.containsKey(name)) {
-                        texture = textures.get(name);
-                        name = IO.fileNameWithOutExtension(texture.getFile());
-                    } else {
-                        name = "";
-                    }
-                    mesh = node.find(name, false);
-                    if(mesh == null) {
-                        mesh = new Node();
-                        mesh.setName(name);
-                        mesh.setTexture(texture);
-                        node.addChild(mesh);
-                    }
-                } else if (tLine.startsWith("v ")) {
-                    Vector3f v = new Vector3f(
-                        Float.parseFloat(tokens[1]),
-                        Float.parseFloat(tokens[2]),
-                        Float.parseFloat(tokens[3])
-                    );
-                    vList.add(v);
-                } else if (tLine.startsWith("vt ")) {
-                    Vector2f v = new Vector2f(
-                        Float.parseFloat(tokens[1]),
-                        1 - Float.parseFloat(tokens[2])
-                    );
-                    tList.add(v);
-                } else if (tLine.startsWith("vn ")) {
-                    Vector3f v = new Vector3f(
-                        Float.parseFloat(tokens[1]),
-                        Float.parseFloat(tokens[2]),
-                        Float.parseFloat(tokens[3])
-                    );
-                    nList.add(v);
-                } else if (tLine.startsWith("f ")) {
-                    if(mesh == null) {
-                        mesh = new Node();
-                        mesh.setName("");
-                        node.addChild(mesh);
-                    }
-                    int bV = mesh.getVertexCount();
-                    int[] indices = new int[tokens.length - 1];
-
-                    for (int i = 1; i != tokens.length; i++) {
-                        String[] iTokens = tokens[i].split("[/]+");
-                        int vI = Integer.parseInt(iTokens[0]) - 1;
-                        int tI = Integer.parseInt(iTokens[1]) - 1;
-                        int nI = Integer.parseInt(iTokens[2]) - 1;
-                        Vector3f v = vList.get(vI);
-                        Vector2f t = tList.get(tI);
-                        Vector3f n = nList.get(nI);
-
-                        mesh.push(
-                            v.x, v.y, v.z,
-                            t.x, t.y,
-                            0, 0,
-                            n.x, n.y, n.z,
-                            1, 1, 1, 1
-                        );
-
-                        indices[i - 1] = bV + i - 1;
-                    }
-                    mesh.push(indices);
-                }
-            }
-
-            if(node.getChildCount() == 1) {
-                node = node.getChild(0);
-                node.calcMeshBounds();
-                node.compileMesh();
-            } else {
-                for(int i = 0; i != node.getChildCount(); i++) {
-                    mesh = node.getChild(i);
-                    mesh.calcMeshBounds();
-                    mesh.compileMesh();
-                    System.out.println(mesh.getIndexCount());
-                }
-            }
-            return node;
-        }
-    
-    }
-
-    public static void registerAssetLoader() {
-        Game.getInstance().getAssets().registerAssetLoader(".obj", Scene.ASSET_TAG, new NodeLoader());
     }
 
     private String name = "Node";
@@ -169,9 +38,9 @@ public final class Node implements Serializable {
     private BlendState blendState = BlendState.OPAQUE;
     private CullState cullState = CullState.BACK;
     private boolean followEye = false;
-    private transient Texture texture = null;
-    private transient Texture texture2 = null;
-    private transient Renderable renderable = null;
+    private Texture texture = null;
+    private Texture texture2 = null;
+    private Renderable renderable = null;
     private final Vector4f lightColor = new Vector4f(1, 1, 1, 1);
     private final Vector4f ambientColor = new Vector4f(0, 0, 0, 1);
     private final Vector4f diffuseColor = new Vector4f(1, 1, 1, 1);
@@ -187,7 +56,7 @@ public final class Node implements Serializable {
     private Object data = null;
     private Node parent = null;
     private final Vector<Node> children = new Vector<>();
-    private transient OctTree octTree = null;
+    private OctTree octTree = null;
     private int minTrisPerTree = 16;
     private Vector3f warpAmplitude = new Vector3f(8, 8, 8);
     private float warpSpeed = 1;
@@ -197,7 +66,6 @@ public final class Node implements Serializable {
     private boolean textureClampToEdge = false;
     private boolean texture2Linear = true;
     private boolean texture2ClampToEdge = true;
-    private transient Animator animator = null;
     private int textureUnit = 0;
     private final Vector<Float> vertices = new Vector<>();
     private final Vector<Integer> indices = new Vector<>();
@@ -403,19 +271,6 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public Animator getAnimator() {
-        return animator;
-    }
-
-    public Node setAnimator(Scene scene, Animator animator) throws Exception {
-        if(animator != null) {
-            animator = animator.newInstance();
-            animator.init(scene, this);
-        }
-        this.animator = animator;
-        return this;
-    }
-
     public int getTextureUnit() {
         return textureUnit;
     }
@@ -540,7 +395,7 @@ public final class Node implements Serializable {
         return this;
     }
 
-    public Node detachAllChildren(Scene scene) throws Exception {
+    public Node detachAllChildren() throws Exception {
         while(!children.isEmpty()) {
             children.get(0).detachFromParent();
         }
@@ -863,101 +718,28 @@ public final class Node implements Serializable {
         return this;
     }
 
-    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
-        out.defaultWriteObject();
-
-        String t1 = "@";
-        String t2 = "@";
-        String rd = "@";
-        String an = "@";
-
-        if(texture != null) {
-            if(texture.getFile() != null) {
-                t1 = texture.getFile().getPath();
-            } 
-        } 
-        if(texture2 != null) {
-            if(texture2.getFile() != null) {
-                t2 = texture2.getFile().getPath();
-            }
-        }
-        if(renderable != null) {
-            if(renderable.getFile() != null) {
-                rd = renderable.getFile().getPath();
-            }
-        }
-        if(animator != null) {
-            if(animator.getFile() != null) {
-                an = animator.getFile().getPath();
-            }
-        }
-        out.writeObject(t1);
-        out.writeObject(t2);
-        out.writeObject(rd);
-        out.writeObject(an);
-
-        if(renderable instanceof KeyFrameMesh) {
-            KeyFrameMesh mesh = (KeyFrameMesh)renderable;
-
-            out.writeObject(mesh.getStart());
-            out.writeObject(mesh.getEnd());
-            out.writeObject(mesh.getSpeed());
-            out.writeObject(mesh.isLooping());
-        } else {
-            out.writeObject(0);
-            out.writeObject(0);
-            out.writeObject(0);
-            out.writeObject(false);
-        }
+    public Node init(Scene scene) throws Exception {
+        return this;
     }
 
-    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
-        in.defaultReadObject();
+    public Node update(Scene scene) throws Exception {
+        return this;
+    }
 
-        String t1 = (String)in.readObject();
-        String t2 = (String)in.readObject();
-        String rd = (String)in.readObject();
-        String an = (String)in.readObject();
-        int start = (Integer)in.readObject();
-        int end = (Integer)in.readObject();
-        int speed = (Integer)in.readObject();
-        boolean looping = (Boolean)in.readObject();
+    public Node handleMouse(Scene scene) throws Exception {
+        return this;
+    }
 
-        if(!t1.equals("@")) {
-            try {
-                setTexture(Game.getInstance().getAssets().load(IO.file(t1)));
-            } catch(Exception ex) {
-                ex.printStackTrace();
-            }
-        }
-        if(!t2.equals("@")) {
-            try {
-                setTexture2(Game.getInstance().getAssets().load(IO.file(t2)));
-            } catch(Exception ex) {
-                ex.printStackTrace();
-            }
-        }
-        if(!rd.equals("@")) {
-            try {
-                renderable = Game.getInstance().getAssets().load(IO.file(rd));
-                renderable = renderable.newInstance();
-                if(renderable instanceof KeyFrameMesh) {
-                    KeyFrameMesh mesh = (KeyFrameMesh)renderable;
+    public boolean handleUI(Scene scene, boolean reset) throws Exception {
+        return false;
+    }
 
-                    mesh.setSequence(start, end, speed, looping);
-                }
-            } catch(Exception ex) {
-                ex.printStackTrace();
-            }
-        }
-        if(!an.equals("@")) {
-            try {
-                animator = Game.getInstance().getAssets().load(IO.file(an));
-                animator = animator.newInstance();
-            } catch(Exception ex) {
-                ex.printStackTrace();
-            }
-        }
+    public Node serialize(Scene scene, ArgumentWriter writer) throws Exception {
+        return this;
+    }
+
+    public Node deserialize(Scene scene, ArgumentReader reader) throws Exception {
+        return this;
     }
 
     private void setState(Texture texture, boolean linear, boolean clampToEdge) {

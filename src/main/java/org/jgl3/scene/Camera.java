@@ -1,17 +1,13 @@
 package org.jgl3.scene;
 
-import java.io.Serializable;
-
 import org.jgl3.GFX;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
-public final class Camera implements Serializable {
+public final class Camera {
 
-    private static final long serialVersionUID = 1234567L;
-    
     private final Vector3f eye = new Vector3f(100, 100, 100);
     private final Vector3f target = new Vector3f();
     private final Vector3f up = new Vector3f(0, 1, 0);
