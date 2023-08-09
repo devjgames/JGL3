@@ -7,7 +7,7 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Light;
 import org.jgl3.LightPipeline;
-import org.jgl3.MeshPTN;
+import org.jgl3.Mesh;
 import org.jgl3.Scene;
 import org.jgl3.Size;
 import org.jgl3.VertexUsage;
@@ -15,19 +15,19 @@ import org.jgl3.demo.App.Demo;
 
 public class HelloWorld extends Demo {
 
-    private class RotatingQuad extends MeshPTN {
+    private class RotatingQuad extends Mesh {
 
         public RotatingQuad() throws Exception {
             super(Game.getInstance().getAssets().manage(new LightPipeline()));
 
             getState().setCullState(CullState.NONE);
 
-            getPipeline().push(-50, 0, -50, 0, 0, 0, 1, 0);
-            getPipeline().push(-50, 0, +50, 0, 2, 0, 1, 0);
-            getPipeline().push(+50, 0, +50, 2, 2, 0, 1, 0);
-            getPipeline().push(+50, 0, -50, 2, 0, 0, 1, 0);
+            getPipeline().pushVertex(-50, 0, -50, 0, 0, 0, 1, 0);
+            getPipeline().pushVertex(-50, 0, +50, 0, 2, 0, 1, 0);
+            getPipeline().pushVertex(+50, 0, +50, 2, 2, 0, 1, 0);
+            getPipeline().pushVertex(+50, 0, -50, 2, 0, 0, 1, 0);
 
-            getPipeline().push(0, 1, 2, 3);
+            getPipeline().pushFace(0, 1, 2, 3);
 
             getPipeline().bufferVertices(VertexUsage.STATIC, true);
             getPipeline().bufferIndices(VertexUsage.STATIC, true);

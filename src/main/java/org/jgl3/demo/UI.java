@@ -9,7 +9,7 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Light;
 import org.jgl3.LightPipeline;
-import org.jgl3.MeshPTN;
+import org.jgl3.Mesh;
 import org.jgl3.RenderTarget;
 import org.jgl3.Scene;
 import org.jgl3.Size;
@@ -82,14 +82,14 @@ public class UI extends Demo {
 
         scene = new Scene();
 
-        MeshPTN mesh = new MeshPTN(game.getAssets().manage(new LightPipeline()));
+        Mesh mesh = new Mesh(game.getAssets().manage(new LightPipeline()));
 
-        mesh.getPipeline().push(-50, 0, -50, 0, 0, 0, 1, 0);
-        mesh.getPipeline().push(-50, 0, +50, 0, 2, 0, 1, 0);
-        mesh.getPipeline().push(+50, 0, +50, 2, 2, 0, 1, 0);
-        mesh.getPipeline().push(+50, 0, -50, 2, 0, 0, 1, 0);
-        mesh.getPipeline().push(0, 1, 2, 3);
-        mesh.getPipeline().push(3, 2, 1, 0);
+        mesh.getPipeline().pushVertex(-50, 0, -50, 0, 0, 0, 1, 0);
+        mesh.getPipeline().pushVertex(-50, 0, +50, 0, 2, 0, 1, 0);
+        mesh.getPipeline().pushVertex(+50, 0, +50, 2, 2, 0, 1, 0);
+        mesh.getPipeline().pushVertex(+50, 0, -50, 2, 0, 0, 1, 0);
+        mesh.getPipeline().pushFace(0, 1, 2, 3);
+        mesh.getPipeline().pushFace(3, 2, 1, 0);
         mesh.getPipeline().bufferVertices(VertexUsage.STATIC, true);
         mesh.getPipeline().bufferIndices(VertexUsage.STATIC, true);
         mesh.setTexture(game.getAssets().load(IO.file("assets/textures/checker.png")));

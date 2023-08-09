@@ -5,17 +5,14 @@ import java.util.Vector;
 
 import org.jgl3.AmbientLight;
 import org.jgl3.Camera;
-import org.jgl3.DualTexturePipeline;
 import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Light;
-import org.jgl3.LightMapper;
 import org.jgl3.LightPipeline;
 import org.jgl3.Mesh;
 import org.jgl3.Node;
 import org.jgl3.NodeLoader;
 import org.jgl3.OctTree;
-import org.jgl3.PointLight;
 import org.jgl3.Scene;
 import org.jgl3.Size;
 import org.jgl3.Triangle;
@@ -52,61 +49,9 @@ public class Map extends Demo {
         ambient.getColor().set(ambientColor);
         scene.getRoot().addChild(ambient);
 
-        Node map = null;
-        File mapFile = IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".txt");
+        Node map = NodeLoader.load(file, 0.025f, () -> new LightPipeline());
 
-        if(mapFile.exists()) {
-
-            File lmFile = IO.file(file.getParentFile(), IO.fileNameWithOutExtension(file) + ".png");
-            LightMapper lightMapper = new LightMapper();
-            String[] lines = new String(IO.readAllBytes(mapFile)).split("\\n+");
-            boolean rebuild = false;
-
-            for(String line : lines) {
-                String tLine = line.trim();
-                String[] tokens = tLine.split("\\s+");
-
-                if(tLine.startsWith("w ")) {
-                    lightMapper.setLightMapWidth(Integer.parseInt(tokens[1]));
-
-                } else if(tLine.startsWith("h ")) {
-                    lightMapper.setLightMapHeight(Integer.parseInt(tokens[1]));
-
-                } else if(tLine.startsWith("aos ")) {
-                    lightMapper.setAOStrength(Float.parseFloat(tokens[1]));
-
-                } else if(tLine.startsWith("aol ")) {
-                    lightMapper.setAOLength(Float.parseFloat(tokens[1]));
-
-                } else if(tLine.startsWith("sr ")) {
-                    lightMapper.setSampleRadius(Float.parseFloat(tokens[1]));
-
-                } else if(tLine.startsWith("sc ")) {
-                    lightMapper.setSampleCount(Integer.parseInt(tokens[1]));
-
-                } else if(tLine.startsWith("rebuild ")) {
-                    rebuild = Boolean.parseBoolean(tokens[1]);
-                
-                } else if(tLine.startsWith("light ")) {
-                    PointLight light = new PointLight();
-
-                    light.getPosition().set(Float.parseFloat(tokens[1]), Float.parseFloat(tokens[2]), Float.parseFloat(tokens[3]));
-                    light.getColor().set(Float.parseFloat(tokens[4]), Float.parseFloat(tokens[5]), Float.parseFloat(tokens[6]), 1);
-                    light.setRange(Float.parseFloat(tokens[7]));
-
-                    scene.getRoot().addChild(light);
-                }
-            }
-
-            map = NodeLoader.load(file, 0.025f, () -> new DualTexturePipeline());
-            scene.getRoot().addChild(map);
-
-            lightMapper.map(scene, lmFile, rebuild);
-        } else {
-            map = NodeLoader.load(file, 0.025f, () -> new LightPipeline());
-
-            scene.getRoot().addChild(map);
-        }
+        scene.getRoot().addChild(map);
         
         final Vector<Triangle> triangles = new Vector<>();
 
@@ -116,26 +61,26 @@ public class Map extends Demo {
             if(n instanceof Mesh) {
                 Mesh mesh = (Mesh)n;
 
-                for(int i = 0; i != mesh.getMeshPipeline().getIndexCount(); ) {
-                    int i1 = mesh.getMeshPipeline().getIndex(i++);
-                    int i2 = mesh.getMeshPipeline().getIndex(i++);
-                    int i3 = mesh.getMeshPipeline().getIndex(i++);
+                for(int i = 0; i != mesh.getPipeline().getIndexCount(); ) {
+                    int i1 = mesh.getPipeline().getIndex(i++);
+                    int i2 = mesh.getPipeline().getIndex(i++);
+                    int i3 = mesh.getPipeline().getIndex(i++);
                     Triangle triangle = new Triangle();
 
                     triangle.getP1().set(
-                        mesh.getMeshPipeline().getVertexComponent(i1, 0),
-                        mesh.getMeshPipeline().getVertexComponent(i1, 1),
-                        mesh.getMeshPipeline().getVertexComponent(i1, 2)
+                        mesh.getPipeline().getVertexComponent(i1, 0),
+                        mesh.getPipeline().getVertexComponent(i1, 1),
+                        mesh.getPipeline().getVertexComponent(i1, 2)
                     );
                     triangle.getP2().set(
-                        mesh.getMeshPipeline().getVertexComponent(i2, 0),
-                        mesh.getMeshPipeline().getVertexComponent(i2, 1),
-                        mesh.getMeshPipeline().getVertexComponent(i2, 2)
+                        mesh.getPipeline().getVertexComponent(i2, 0),
+                        mesh.getPipeline().getVertexComponent(i2, 1),
+                        mesh.getPipeline().getVertexComponent(i2, 2)
                     );
                     triangle.getP3().set(
-                        mesh.getMeshPipeline().getVertexComponent(i3, 0),
-                        mesh.getMeshPipeline().getVertexComponent(i3, 1),
-                        mesh.getMeshPipeline().getVertexComponent(i3, 2)
+                        mesh.getPipeline().getVertexComponent(i3, 0),
+                        mesh.getPipeline().getVertexComponent(i3, 1),
+                        mesh.getPipeline().getVertexComponent(i3, 2)
                     );
                     triangle.calcPlane();
 

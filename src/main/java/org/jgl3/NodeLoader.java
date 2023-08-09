@@ -53,16 +53,9 @@ public class NodeLoader {
                 }
                 if(!meshes.containsKey(texture)) {
                     MeshPipeline pipeline = game.getAssets().manage(generator.generate());
-                    Mesh mesh = null;
+                    Mesh mesh = new Mesh(pipeline);
 
-                    if(pipeline instanceof DualTexturePipeline) {
-                        mesh = new MeshPT2((DualTexturePipeline)pipeline);
-                        mesh.setTexture(t);
-                    } else {
-                        mesh = new MeshPTN((LightPipeline)pipeline);
-                        mesh.setTexture(t);
-                    }
-
+                    mesh.setTexture(t);
                     meshes.put(texture, mesh);
                     root.addChild(mesh);
                 }
@@ -78,12 +71,7 @@ public class NodeLoader {
                 if(!meshes.containsKey(texture)) {
                     MeshPipeline pipeline = game.getAssets().manage(generator.generate());
 
-                    if(pipeline instanceof DualTexturePipeline) {
-                        mesh = new MeshPT2((DualTexturePipeline)pipeline);
-                    } else {
-                        mesh = new MeshPTN((LightPipeline)pipeline);
-                    }
-
+                    mesh = new Mesh(pipeline);
                     meshes.put(texture, mesh);
                     root.addChild(mesh);
                 } else {
@@ -91,7 +79,7 @@ public class NodeLoader {
                 }
 
                 int[] indices = new int[tokens.length - 1];
-                int baseVertex = mesh.getMeshPipeline().getVertexCount();
+                int baseVertex = mesh.getPipeline().getVertexCount();
                 Texture tex = mesh.getTexture();
 
                 for(int i = 1; i != tokens.length; i++) {
@@ -100,11 +88,8 @@ public class NodeLoader {
                     Vector2f t = tList.get(Integer.parseInt(iTokens[1]) - 1);
                     Vector3f n = nList.get(Integer.parseInt(iTokens[2]) - 1);
 
-                    if(mesh instanceof MeshPTN) {
-                        ((MeshPTN)mesh).getPipeline().push(v.x, v.y, v.z, t.x, t.y, n.x, n.y, n.z);
-                    } else {
-                        ((MeshPT2)mesh).getPipeline().push(v.x, v.y, v.z, t.x, t.y, 0, 0);
-                    }
+                    mesh.getPipeline().pushVertex(v.x, v.y, v.z, t.x, t.y, n.x, n.y, n.z);
+
                     indices[i - 1] = baseVertex + (i - 1);
                 }
                 if(pixelOffset > 0.0000001 && tex != null) {
@@ -116,8 +101,8 @@ public class NodeLoader {
                     float py = 1.0f / tex.getHeight();
 
                     for(int i = 0; i != indices.length; i++) {
-                        float s = mesh.getMeshPipeline().getVertexComponent(indices[i], 3);
-                        float t = mesh.getMeshPipeline().getVertexComponent(indices[i], 4);
+                        float s = mesh.getPipeline().getVertexComponent(indices[i], 3);
+                        float t = mesh.getPipeline().getVertexComponent(indices[i], 4);
 
                         x1 = Math.min(x1, s);
                         y1 = Math.min(y1, t);
@@ -131,19 +116,19 @@ public class NodeLoader {
                     y2 -= py * pixelOffset;
 
                     for(int i = 0; i != indices.length; i++) {
-                        float s = mesh.getMeshPipeline().getVertexComponent(indices[i], 3);
-                        float t = mesh.getMeshPipeline().getVertexComponent(indices[i], 4);
+                        float s = mesh.getPipeline().getVertexComponent(indices[i], 3);
+                        float t = mesh.getPipeline().getVertexComponent(indices[i], 4);
 
                         s = Math.max(x1, s);
                         t = Math.max(y1, t);
                         s = Math.min(x2, s);
                         t = Math.min(y2, t);
 
-                        mesh.getMeshPipeline().setVertexComponent(indices[i], 3, s);
-                        mesh.getMeshPipeline().setVertexComponent(indices[i], 4, t);
+                        mesh.getPipeline().setVertexComponent(indices[i], 3, s);
+                        mesh.getPipeline().setVertexComponent(indices[i], 4, t);
                     }
                 }
-                mesh.getMeshPipeline().push(indices);
+                mesh.getPipeline().pushFace(indices);
             }
         }
 
@@ -151,8 +136,8 @@ public class NodeLoader {
             if(node instanceof Mesh) {
                 Mesh m = (Mesh)node;
 
-                m.getMeshPipeline().bufferVertices(VertexUsage.STATIC, true);
-                m.getMeshPipeline().bufferIndices(VertexUsage.STATIC, true);
+                m.getPipeline().bufferVertices(VertexUsage.STATIC, true);
+                m.getPipeline().bufferIndices(VertexUsage.STATIC, true);
             }
             return true;
         });

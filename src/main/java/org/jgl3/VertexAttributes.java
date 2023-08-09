@@ -19,6 +19,10 @@ public final class VertexAttributes {
         this.stride = stride;
     }
 
+    public int[] getComponents() {
+        return components.clone();
+    }
+
     public boolean canBind(VertexAttributes pipelineAttributes) {
         boolean valid = pipelineAttributes.components.length <= components.length;
 

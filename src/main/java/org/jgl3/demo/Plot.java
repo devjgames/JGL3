@@ -6,7 +6,7 @@ import org.jgl3.Game;
 import org.jgl3.IO;
 import org.jgl3.Light;
 import org.jgl3.LightPipeline;
-import org.jgl3.MeshPTN;
+import org.jgl3.Mesh;
 import org.jgl3.PointLight;
 import org.jgl3.Scene;
 import org.jgl3.Size;
@@ -41,7 +41,7 @@ public class Plot extends Demo {
         }
     }
 
-    private class Graph extends MeshPTN {
+    private class Graph extends Mesh {
 
         private static final int H = 50;
         private static final int D = 64;
@@ -54,7 +54,7 @@ public class Plot extends Demo {
 
             for(int i = 0; i != D - 1; i++) {
                 for(int j = 0; j != D - 1; j++) {
-                    getPipeline().push(
+                    getPipeline().pushFace(
                         i * D + j, i * D + j + 1, (i + 1) * D + j + 1, (i + 1) * D + j
                     );
                 }
@@ -88,7 +88,7 @@ public class Plot extends Demo {
                     float z = -50 + j / (D - 1.0f) * 100;
                     float y = h / (1 + (x * 0.1f) * (x * 0.1f) + (z * 0.1f) * (z * 0.1f));
 
-                    getPipeline().push(x, y, z, i / (D - 1.0f) * 4, j / (D - 1.0f) * 4, 0, 0, 0);
+                    getPipeline().pushVertex(x, y, z, i / (D - 1.0f) * 4, j / (D - 1.0f) * 4, 0, 0, 0);
                 }
             }
             getPipeline().calcNormals();
