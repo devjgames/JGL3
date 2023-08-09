@@ -2,6 +2,7 @@ package org.jgl3;
 
 import java.nio.FloatBuffer;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL15;
 
 public final class VertexBuffer extends Resource {
@@ -32,5 +33,31 @@ public final class VertexBuffer extends Resource {
     public void destroy() throws Exception {
         GL15.glDeleteBuffers(vbo);
         super.destroy();
+    }
+
+    public static FloatBuffer ensure(FloatBuffer vBuf, int growBy) {
+        if(vBuf.position() == vBuf.capacity()) {
+            Log.put(1, "increasing buffer capacity ...");
+
+            FloatBuffer nBuf = BufferUtils.createFloatBuffer(vBuf.capacity() + growBy);
+
+            vBuf.flip();
+            nBuf.put(vBuf);
+            vBuf = nBuf;
+        }
+        return vBuf;
+    }
+
+    public static FloatBuffer trim(FloatBuffer vBuf) {
+        if(vBuf.position() < vBuf.capacity()) {
+            Log.put(1, "trimming buffer capacity ...");
+
+            FloatBuffer nBuf = BufferUtils.createFloatBuffer(vBuf.position());
+
+            vBuf.flip();
+            nBuf.put(vBuf);
+            vBuf = nBuf;
+        }
+        return vBuf;
     }
 }

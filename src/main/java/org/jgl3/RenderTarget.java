@@ -3,7 +3,7 @@ package org.jgl3;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
-public final class RenderTarget extends Resource {
+public final class RenderTarget extends Resource implements Size {
 
     private final Texture[] textures;
     private final int framebuffer, renderbuffer;
@@ -41,6 +41,7 @@ public final class RenderTarget extends Resource {
         }
     }
 
+    @Override
     public float getAspectRatio() {
         return getWidth() / (float)getHeight();
     }
@@ -53,10 +54,12 @@ public final class RenderTarget extends Resource {
         return textures[i];
     }
 
+    @Override
     public int getWidth() {
         return textures[0].getWidth();
     }
 
+    @Override
     public int getHeight() {
         return textures[0].getHeight();
     }

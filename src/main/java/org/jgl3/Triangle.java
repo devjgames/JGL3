@@ -25,6 +25,10 @@ public final class Triangle implements Serializable {
     private final Vector3f ab = new Vector3f();
     private final Vector3f ap = new Vector3f();
     private final Vector3f c = new Vector3f();
+    private final Vector3f origin = new Vector3f();
+    private final Vector3f direction = new Vector3f();
+    private final Vector3f closestPoint = new Vector3f();
+    private final Vector3f iPoint = new Vector3f();
 
     public Triangle() {
         calcPlane();
@@ -175,5 +179,33 @@ public final class Triangle implements Serializable {
             }
         }
         return this;
+    }
+
+    public boolean resolve(Vector3f position, float radius, float[] time, Vector3f resolvedPosition, Vector3f resolvedNormal) {
+        boolean resolved = false;
+        float t = time[0];
+
+        origin.set(position);
+        n.negate(direction);
+
+        if(intersectsPlane(origin, direction, time)) {
+            direction.mul(time[0], iPoint).add(origin);
+            if(contains(iPoint, 0)) {
+                resolvedPosition.set(n).mul(radius).add(iPoint);
+                resolvedNormal.set(n);
+                resolved = true;
+            } else {
+                time[0] = t;
+                closestPoint(position, closestPoint);
+                t = position.distance(closestPoint);
+                if(t > 0.0000001 && t < time[0]) {
+                    time[0] = t;
+                    position.sub(closestPoint, resolvedNormal).normalize();
+                    resolvedPosition.set(resolvedNormal).mul(radius).add(closestPoint);
+                    resolved = true;
+                }
+            }
+        }
+        return resolved;
     }
 }

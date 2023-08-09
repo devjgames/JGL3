@@ -62,7 +62,7 @@ public final class GFX {
 
             if(code != GL11.GL_NO_ERROR) {
                 error = true;
-                Log.put(0, tag + ":" + (code == GL11.GL_INVALID_ENUM));
+                Log.put(0, tag + ":" + code);
             }
         }
     }

@@ -2,6 +2,7 @@ package org.jgl3;
 
 import java.nio.IntBuffer;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL15;
 
 public final class VertexElementBuffer extends Resource {
@@ -33,5 +34,31 @@ public final class VertexElementBuffer extends Resource {
     public void destroy() throws Exception {
         GL15.glDeleteBuffers(veo);
         super.destroy();
+    }
+
+    public static IntBuffer ensure(IntBuffer iBuf, int growBy) {
+        if(iBuf.position() == iBuf.capacity()) {
+            Log.put(1, "increasing buffer capacity ...");
+
+            IntBuffer nBuf = BufferUtils.createIntBuffer(iBuf.capacity() + growBy);
+
+            iBuf.flip();
+            nBuf.put(iBuf);
+            iBuf = nBuf;
+        }
+        return iBuf;
+    }
+
+    public static IntBuffer trim(IntBuffer iBuf) {
+        if(iBuf.position() < iBuf.capacity()) {
+            Log.put(1, "trimming buffer capacity ...");
+
+            IntBuffer nBuf = BufferUtils.createIntBuffer(iBuf.position());
+
+            iBuf.flip();
+            nBuf.put(iBuf);
+            iBuf = nBuf;
+        }
+        return iBuf;
     }
 }

@@ -5,7 +5,7 @@ import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 
-public final class Game {
+public final class Game implements Size {
 
     private static Game instance = null;
 
@@ -17,7 +17,8 @@ public final class Game {
     private final ResourceManager resources = new ResourceManager();
     private final AssetManager assets;
     private final SoundEngine soundEngine;
-    private final Renderer renderer;
+    private final SpritePipeline spritePipeline;
+    private final Font font;
     private final double[] x = new double[1];
     private final double[] y = new double[1];
     private final int[] w = new int[1];
@@ -76,7 +77,8 @@ public final class Game {
 
         assets = resources.manage(new AssetManager());
         soundEngine = resources.manage(new SoundEngine());
-        renderer = resources.manage(new Renderer());
+        spritePipeline = resources.manage(new SpritePipeline());
+        font = resources.manage(new Font(Game.class, "/org/jgl3/resources/font.png", 8, 12, 100, 10, 3, getScale()));
 
         GLFW.glfwSwapInterval(1);
 
@@ -103,20 +105,27 @@ public final class Game {
         return soundEngine;
     }
 
-    public Renderer getRenderer() {
-        return renderer;
+    public SpritePipeline getSpritePipeline() {
+        return spritePipeline;
     }
 
+    public Font getFont() {
+        return font;
+    }
+
+    @Override
     public int getWidth() {
         GLFW.glfwGetFramebufferSize(window, w, h);
         return w[0];
     }
 
+    @Override
     public int getHeight() {
         GLFW.glfwGetFramebufferSize(window, w, h);
         return h[0];
     }
 
+    @Override
     public float getAspectRatio() {
         return getWidth() / (float)getHeight();
     }

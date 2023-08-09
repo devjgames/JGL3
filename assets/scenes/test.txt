@@ -1,5 +1,0 @@
-node org.jgl3.demo.Light  48.0 92.0 54.0 8.0 4.0 0.0 1.0 200.0
-node org.jgl3.demo.Platform  assets/tiles/stone-checker.png 0.0 1.0 0.0 0.0 0.0 2 2 0.2 0.2 0.6 1.0 1.0 1.0 1.0 1.0 true
-node org.jgl3.demo.Platform  assets/tiles/stone-checker.png -0.43496555 0.90044713 -16.0 28.0 -40.0 2 1 0.2 0.2 0.6 1.0 1.0 1.0 1.0 1.0 true
-node org.jgl3.demo.Platform  assets/tiles/stone.png -0.29552022 0.9553366 -80.0 42.0 14.0 2 2 0.2 0.2 0.6 1.0 1.0 1.0 1.0 1.0 true
-node org.jgl3.demo.Platform  assets/tiles/stone.png 0.6442177 0.7648423 18.0 -18.0 51.0 1 1 0.2 0.2 0.6 1.0 1.0 1.0 1.0 1.0 true

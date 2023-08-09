@@ -14,8 +14,16 @@ public final class Font extends Resource {
     private final int scale;
 
     public Font(File file, int charW, int charH, int columns, int whiteX, int whiteY, int scale) throws Exception {
+        this(file, Game.getInstance().getAssets().load(file), charW, charH, columns, whiteX, whiteY, scale);
+    }
+
+    public Font(Class<?> cls, String name, int charW, int charH, int columns, int whiteX, int whiteY, int scale) throws Exception {
+        this(null, Texture.load(cls, name), charW, charH, columns, whiteX, whiteY, scale);
+    }
+
+    private Font(File file, Texture texture, int charW, int charH, int columns, int whiteX, int whiteY, int scale) throws Exception {
         this.file = file;
-        texture = (Texture)new Texture.Loader().load(file);
+        this.texture = texture;
         this.charW = charW;
         this.charH = charH;
         this.columns = columns;
@@ -54,6 +62,39 @@ public final class Font extends Resource {
 
     public int getScale() {
         return scale;
+    }
+
+    public void measure(String s, int lineSpacing, int[] size) {
+        int w = 0;
+        int p = 0;
+        int l = 0;
+
+        size[0] = 0;
+        size[1] = 0;
+
+        for(int i = 0; i != s.length(); i++) {
+            char c = s.charAt(i);
+
+            if(c == '\n') {
+                l += charH * scale;
+                size[1] = l;
+                size[0] = Math.max(size[0], w);
+                w = 0;
+                l += lineSpacing * scale;
+                p++;
+            } else {
+                int j = (int)c - (int)' ';
+
+                if(j >= 0 && j < 100) {
+                    w += charW * scale;
+                    p++;
+                }
+            }
+        }
+        if(p != 0) {
+            size[0] = Math.max(size[0], w);
+            size[1] = size[1] + charH * scale + ((l != 0) ? lineSpacing * scale : 0);
+        }
     }
 
     @Override

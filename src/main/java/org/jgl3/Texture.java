@@ -1,6 +1,7 @@
 package org.jgl3;
 
 import java.io.File;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -19,19 +20,36 @@ public final class Texture extends Resource {
     public static final class Loader implements AssetLoader {
         @Override
         public Object load(File file) throws Exception {
-            BufferedImage image = ImageIO.read(file);
-            int w = image.getWidth();
-            int h = image.getHeight();
-            int[] pixels = new int[w * h];
-
-            image.getRGB(0, 0, w, h, pixels, 0, w);
-            for(int i = 0; i != pixels.length; i++) {
-                int p = pixels[i];
-
-                pixels[i] = (p & 0xFF000000) | ((p << 16) & 0xFF0000) | (p & 0xFF00) | ((p >> 16) & 0xFF);
-            }
-            return new Texture(file, w, h, pixels);
+            return Texture.load(file, ImageIO.read(file));
         }
+    }
+
+    public static final Texture load(Class<?> cls, String name) throws Exception {
+        InputStream input = null;
+        Texture texture = null;
+
+        try {
+            texture = load(null, ImageIO.read(input = cls.getResourceAsStream(name)));
+        } finally {
+            if(input != null) {
+                input.close();
+            }
+        }
+        return texture;
+    }
+
+    public static final Texture load(File file, BufferedImage image) throws Exception {
+        int w = image.getWidth();
+        int h = image.getHeight();
+        int[] pixels = new int[w * h];
+
+        image.getRGB(0, 0, w, h, pixels, 0, w);
+        for(int i = 0; i != pixels.length; i++) {
+            int p = pixels[i];
+
+            pixels[i] = (p & 0xFF000000) | ((p << 16) & 0xFF0000) | (p & 0xFF00) | ((p >> 16) & 0xFF);
+        }
+        return new Texture(file, w, h, pixels);
     }
     
     private final File file;
