@@ -18,26 +18,25 @@ public class Plot extends Demo {
     private class RotatingPointLight extends PointLight {
 
         private final float angularVelocity;
-        private final float radius;
-        private float angle;
 
-        public RotatingPointLight(float angularVelocity, float startAngle, float radius, float range, float r, float g, float b) {
+        public RotatingPointLight(float angularVelocity, float x, float y, float z, float range, float r, float g, float b) {
 
             this.angularVelocity = (float)Math.toRadians(angularVelocity);
-            this.radius = radius;
+
             setRange(range);
             getColor().set(r, g, b, 1);
+            getPosition().set(x, y, z);
+        }
 
-            this.angle = startAngle = (float)Math.toRadians(startAngle);
-            getPosition().set((float)Math.cos(startAngle) * radius, 20, (float)Math.sin(startAngle) * radius);
+        @Override
+        public void calcLocalModel() {
+            getLocalModel().set(getRotation()).translate(getPosition());
         }
 
         @Override
         public void update(Scene scene) throws Exception {
 
-            angle += angularVelocity * Game.getInstance().getElapsedTime();
-
-            getPosition().set((float)Math.cos(angle) * radius, getPosition().y, (float)Math.sin(angle) * radius);
+            getRotation().rotate(angularVelocity * Game.getInstance().getElapsedTime(), 0, 1, 0);
         }
     }
 
@@ -104,8 +103,8 @@ public class Plot extends Demo {
         scene.getRoot().addChild(new Graph());
         scene.getRoot().addChild(new AmbientLight());
         ((Light)scene.getRoot().lastChild()).getColor().set(0.5f, 0.5f, 0.5f, 1);
-        scene.getRoot().addChild(new RotatingPointLight(+180, 000, 40, 200, 2, 1, 0));
-        scene.getRoot().addChild(new RotatingPointLight(-180, 180, 40, 200, 0, 1, 2));
+        scene.getRoot().addChild(new RotatingPointLight(+180, +40, 20, 0, 200, 2, 1, 0));
+        scene.getRoot().addChild(new RotatingPointLight(-180, -40, 20, 0, 200, 0, 1, 2));
         scene.getRoot().addChild(new Camera());
         scene.getRoot().lastChild().getPosition().set(100, 100, 100);
         ((Camera)scene.getRoot().lastChild()).look(-1, -1, -1, 0, 1, 0);

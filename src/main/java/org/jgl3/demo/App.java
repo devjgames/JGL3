@@ -170,7 +170,7 @@ public class App {
             new HelloWorld(),
             new Plot(),
             new UI(),
-            new Map(IO.file("assets/maps/map1.obj"), 0, 64, 0, 1, -1, 0.4f, 0.5f, 0.6f)
+            new Map(IO.file("assets/maps/map1.obj"), 0, 64, 0, 1, -1, 0.7f, 0.7f, 0.7f)
         );
     }
 }
