@@ -151,7 +151,13 @@ public class Node {
         }
     }
 
+    public void preUpdate(Scene scene) throws Exception {
+    }
+
     public void update(Scene scene) throws Exception {
+    }
+
+    public void postUpdate(Scene scene) throws Exception {
     }
 
     public void calcLocalModel() {

@@ -15,6 +15,7 @@ public class Scene {
     private final Vector<Node> renderables = new Vector<>();
     private final Vector<Light> lights = new Vector<>();
     private final Vector4f backgroundColor = new Vector4f(0.75f, 0.75f, 0.75f, 1);
+    private boolean lightMapLinear = false;
 
     public String getID() {
         return id;
@@ -44,6 +45,14 @@ public class Scene {
         return backgroundColor;
     }
 
+    public boolean isLightMapLinear() {
+        return lightMapLinear;
+    }
+
+    public void setLightMapLinear(boolean linear) {
+        lightMapLinear = linear;
+    }
+
     public Camera getCamera() {
         return camera;
     }
@@ -66,7 +75,19 @@ public class Scene {
     public void render(Size size) throws Exception {
 
         getRoot().traverse(this, (scene, node) -> {
+            node.preUpdate(scene);
+            
+            return true;
+        });
+
+        getRoot().traverse(this, (scene, node) -> {
             node.update(scene);
+            
+            return true;
+        });
+
+        getRoot().traverse(this, (scene, node) -> {
+            node.postUpdate(scene);
             
             return true;
         });

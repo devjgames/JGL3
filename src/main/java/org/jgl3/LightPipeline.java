@@ -3,6 +3,7 @@ package org.jgl3;
 import java.util.Vector;
 
 import org.joml.Matrix4f;
+import org.joml.Vector4f;
 
 public class LightPipeline extends MeshPipeline {
 
@@ -19,14 +20,15 @@ public class LightPipeline extends MeshPipeline {
     private int uLightCount;
     private int uProjection, uView, uModel, uModelIT;
     private int uColor;
+    private int uAmbientColor;
     private  int uTexture, uTextureEnabled;
     private final Matrix4f it = new Matrix4f();
 
     public LightPipeline() throws Exception {
         super(
             new Pipeline(
-                IO.readAllBytes(LightPipeline.class, "/org/jgl3/glsl/VertexLightVertex.glsl"),
-                IO.readAllBytes(LightPipeline.class, "/org/jgl3/glsl/VertexLightFragment.glsl"),
+                IO.readAllBytes(LightPipeline.class, "/glsl/VertexLightVertex.glsl"),
+                IO.readAllBytes(LightPipeline.class, "/glsl/VertexLightFragment.glsl"),
                 "vsInPosition", 3, 
                 "vsInTextureCoordinate", 2,
                 "vsInNormal", 3
@@ -46,6 +48,7 @@ public class LightPipeline extends MeshPipeline {
         uView = getPipeline().getUniform("uView");
         uModel = getPipeline().getUniform("uModel");
         uModelIT = getPipeline().getUniform("uModelIT");
+        uAmbientColor = getPipeline().getUniform("uAmbientColor");
         uColor = getPipeline().getUniform("uColor");
         uTexture = getPipeline().getUniform("uTexture");
         uTextureEnabled = getPipeline().getUniform("uTextureEnabled");
@@ -56,7 +59,6 @@ public class LightPipeline extends MeshPipeline {
         return COMPONENTS;
     }
 
-    @Override
     public void setTexture(Texture texture) {
         getPipeline().set(uTextureEnabled, texture != null);
         if(texture != null) {
@@ -64,12 +66,22 @@ public class LightPipeline extends MeshPipeline {
         }
     }
 
-    @Override
     public void setColor(float r, float g, float b, float a) {
         getPipeline().set(uColor, r, g, b, a);
     }
+
+    public void setColor(Vector4f color) {
+        getPipeline().set(uColor, color);
+    }
+
+    public void setAmbientColor(float r, float g, float b, float a) {
+        getPipeline().set(uAmbientColor, r, g, b, a);
+    }
+
+    public void setAmbientColor(Vector4f color) {
+        getPipeline().set(uAmbientColor, color);
+    }
     
-    @Override
     public void setTransform(Camera camera, Node node) {
         getPipeline().set(uProjection, camera.getProjection());
         getPipeline().set(uView, camera.getModel());
@@ -77,7 +89,6 @@ public class LightPipeline extends MeshPipeline {
         getPipeline().set(uModelIT, it.set(node.getModel()).invert().transpose());
     }
 
-    @Override
     public void setLights(Vector<Light> lights) {
         int count = Math.min(MAX_LIGHTS, lights.size());
 

@@ -78,7 +78,7 @@ public final class Game implements Size {
         assets = resources.manage(new AssetManager());
         soundEngine = resources.manage(new SoundEngine());
         spritePipeline = resources.manage(new SpritePipeline());
-        font = resources.manage(new Font(Game.class, "/org/jgl3/resources/font.png", 8, 12, 100, 10, 3, getScale()));
+        font = resources.manage(new Font(Game.class, "/font.png", 8, 12, 100, 10, 3, getScale()));
 
         GLFW.glfwSwapInterval(1);
 

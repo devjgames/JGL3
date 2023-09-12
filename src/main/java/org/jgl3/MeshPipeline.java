@@ -6,7 +6,6 @@ import java.util.Vector;
 
 import org.joml.GeometryUtils;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 
 public abstract class MeshPipeline extends Resource {
@@ -135,9 +134,9 @@ public abstract class MeshPipeline extends Resource {
         vao.begin(pipeline.getVertexAttributes());
     }
 
-    public final void render() throws Exception {
-        if(iBuf.limit() != 0 && iBuf.position() == 0) {
-            vao.draw(iBuf.limit());
+    public final void render(int count) throws Exception {
+        if(iBuf.limit() != 0 && iBuf.position() == 0 && count != 0 && count <= iBuf.limit()) {
+            vao.draw(count);
         }
     }
 
@@ -145,18 +144,6 @@ public abstract class MeshPipeline extends Resource {
         vao.end();
         getPipeline().end();
     }
-
-    public abstract void setTexture(Texture texture);
-
-    public abstract void setColor(float r, float g, float b, float a);
-
-    public final void setColor(Vector4f color) {
-        setColor(color.x, color.y, color.z, color.w);
-    }
-    
-    public abstract void setTransform(Camera camera, Node node);
-
-    public abstract void setLights(Vector<Light> lights);
 
     public final void calcNormals() {
         int components = getComponents();

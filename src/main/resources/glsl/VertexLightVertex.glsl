@@ -25,10 +25,11 @@ uniform mat4 uView;
 uniform mat4 uModel;
 uniform mat4 uModelIT;
 
+uniform vec4 uAmbientColor;
 uniform vec4 uColor;
 
 void main() {
-    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+    vec4 color = uAmbientColor;
     vec4 position = uModel * vec4(vsInPosition, 1.0);
     vec3 normal = normalize((uModelIT * vec4(vsInNormal, 0.0)).xyz);
 

@@ -19,8 +19,8 @@ public final class SpritePipeline extends Resource {
 
     public SpritePipeline() throws Exception {
         pipeline = new Pipeline(
-            IO.readAllBytes(SpritePipeline.class, "/org/jgl3/glsl/SpriteVertex.glsl"), 
-            IO.readAllBytes(SpritePipeline.class, "/org/jgl3/glsl/SpriteFragment.glsl"),
+            IO.readAllBytes(SpritePipeline.class, "/glsl/SpriteVertex.glsl"),
+            IO.readAllBytes(SpritePipeline.class, "/glsl/SpriteFragment.glsl"),
             "vsInPosition", 2,
             "vsInTextureCoordinate", 2,
             "vsInColor", 4

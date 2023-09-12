@@ -3,30 +3,21 @@ package org.jgl3;
 import java.io.File;
 import java.util.Enumeration;
 import java.util.Hashtable;
-import java.util.Vector;
 
 public final class AssetManager extends ResourceManager {
 
     private final Hashtable<String, Object> assets = new Hashtable<>();
     private final Hashtable<String, AssetLoader> assetLoaders = new Hashtable<>();
-    private final Hashtable<Integer, Vector<String>> assetTypes = new Hashtable<>();
 
     public AssetManager() {
-        registerAssetLoader(".png", 0, new Texture.Loader());
-        registerAssetLoader(".jpg", 0, new Texture.Loader());
-        registerAssetLoader(".wav", 0, new Sound.SoundLoader());
+        registerAssetLoader(".png", new Texture.Loader());
+        registerAssetLoader(".jpg", new Texture.Loader());
+        registerAssetLoader(".wav", new Sound.SoundLoader());
+        registerAssetLoader(".md2", new KeyFrameMeshLoader());
     }
     
-    public void registerAssetLoader(String extension, int type, AssetLoader assetLoader) {
+    public void registerAssetLoader(String extension, AssetLoader assetLoader) {
         assetLoaders.put(extension, assetLoader);
-        if(!assetTypes.containsKey(type)) {
-            assetTypes.put(type, new Vector<>());
-        }
-        assetTypes.get(type).add(extension);
-    }
-
-    public Vector<String> getExtensionsForType(int type) {
-        return new Vector<>(assetTypes.get(type));
     }
 
     @SuppressWarnings("unchecked")
